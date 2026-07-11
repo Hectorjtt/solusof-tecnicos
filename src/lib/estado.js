@@ -1,0 +1,14 @@
+export const STATUS_LABEL = {
+  asignado: 'Asignado',
+  en_progreso: 'En progreso',
+  finalizado: 'Finalizado',
+  aprobado: 'Aprobado',
+  rechazado: 'Rechazado',
+}
+
+export const STATUS_LIST = ['asignado', 'en_progreso', 'finalizado', 'aprobado', 'rechazado']
+
+export function formatFecha(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })
+}
