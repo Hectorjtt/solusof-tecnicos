@@ -12,7 +12,15 @@ const TIPOS_UNIDAD = [
   { value: 'otra', label: 'Otra' },
 ]
 
+const TIPOS_SERVICIO = [
+  { value: 'instalacion', label: 'Instalación' },
+  { value: 'revision', label: 'Revisión' },
+  { value: 'reinstalacion', label: 'Reinstalación' },
+  { value: 'desinstalacion', label: 'Desinstalación' },
+]
+
 const initialForm = {
+  tipo_servicio: '',
   cliente_nombre: '',
   cliente_telefono: '',
   cliente_correo: '',
@@ -62,6 +70,10 @@ export default function NuevoServicioForm() {
       setError('Selecciona qué técnico hará el servicio.')
       return
     }
+    if (!form.tipo_servicio) {
+      setError('Selecciona el tipo de servicio.')
+      return
+    }
     setEnviando(true)
     try {
       const payload = {
@@ -83,6 +95,24 @@ export default function NuevoServicioForm() {
     <div className="app-shell">
       <Topbar title="Nuevo servicio" />
       <form className="container" style={{ maxWidth: 720 }} onSubmit={handleSubmit}>
+        <div className="panel">
+          <h2>Tipo de servicio</h2>
+          <div className="radio-row">
+            {TIPOS_SERVICIO.map((t) => (
+              <label key={t.value}>
+                <input
+                  type="radio"
+                  name="tipo_servicio"
+                  value={t.value}
+                  checked={form.tipo_servicio === t.value}
+                  onChange={set('tipo_servicio')}
+                />
+                {t.label}
+              </label>
+            ))}
+          </div>
+        </div>
+
         <div className="panel">
           <h2>Datos del cliente</h2>
           <div className="field">

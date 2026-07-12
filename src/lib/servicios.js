@@ -105,6 +105,17 @@ export async function aprobarServicio(id, revisorId) {
   return data
 }
 
+export async function guardarReportePdfPath(id, path) {
+  const { data, error } = await supabase
+    .from('servicios')
+    .update({ reporte_pdf_storage_path: path })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
 export async function rechazarServicio(id, revisorId, motivo) {
   const { data, error } = await supabase
     .from('servicios')

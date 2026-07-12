@@ -10,6 +10,10 @@ export function firmaPath(servicioId) {
   return `servicios/${servicioId}/firma.png`
 }
 
+export function reportePdfPath(servicioId) {
+  return `servicios/${servicioId}/reporte.pdf`
+}
+
 export async function subirArchivo(path, file) {
   const { error } = await supabase.storage
     .from(BUCKET)

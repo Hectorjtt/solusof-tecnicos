@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ChecklistField } from './ChecklistField'
 import { CHECKLIST_STEPS, OTROS_DATOS_GROUPS } from '../wizard/fieldsConfig'
 import { getSignedUrl } from '../lib/storage'
+import { TIPO_SERVICIO_LABEL } from '../lib/estado'
 
 const TIPO_UNIDAD_LABEL = {
   particular: 'Particular',
@@ -71,6 +72,11 @@ export function ServicioResumen({ servicio }) {
 
   return (
     <div className="stack">
+      {servicio.tipo_servicio && (
+        <div className="panel">
+          <DatoRow label="Tipo de servicio" value={TIPO_SERVICIO_LABEL[servicio.tipo_servicio]} />
+        </div>
+      )}
       <div className="panel">
         <h2>Datos del cliente</h2>
         <DatoRow label="Cliente" value={servicio.cliente_nombre} />
