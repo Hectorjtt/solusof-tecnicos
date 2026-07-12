@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { getServicioCompleto } from '../lib/servicios'
 import { eliminarArchivo } from '../lib/storage'
@@ -31,7 +31,6 @@ export function ServicioWizardProvider({ servicioId, children }) {
   const [childData, setChildData] = useState({})
   const [accesorios, setAccesorios] = useState([])
   const [fotos, setFotos] = useState([])
-  const [saveStatus, setSaveStatus] = useState({})
   const timers = useRef({})
 
   const load = useCallback(async () => {
@@ -145,71 +144,81 @@ export function ServicioWizardProvider({ servicioId, children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accesorios, loading, servicioId])
 
-  function updateField(table, key, value, { immediate = false } = {}) {
-    setChildData((d) => ({ ...d, [table]: { ...d[table], [key]: value } }))
-    const timerKey = `${table}:${key}`
-    setSaveStatus((s) => ({ ...s, [timerKey]: 'saving' }))
-    clearTimeout(timers.current[timerKey])
-    timers.current[timerKey] = setTimeout(
-      async () => {
-        const { error: err } = await supabase
-          .from(table)
-          .upsert({ servicio_id: servicioId, [key]: value }, { onConflict: 'servicio_id' })
-        setSaveStatus((s) => ({ ...s, [timerKey]: err ? 'error' : 'saved' }))
-      },
-      immediate ? 0 : 550,
-    )
-  }
+  // Estable entre renders (useCallback) para que los campos memoizados (React.memo)
+  // no se re-rendericen solo porque el padre volvió a renderizar -- esto es lo que
+  // hacía sentir "pesado" el tap de checkboxes en el celular.
+  const updateField = useCallback(
+    (table, key, value, { immediate = false } = {}) => {
+      setChildData((d) => ({ ...d, [table]: { ...d[table], [key]: value } }))
+      const timerKey = `${table}:${key}`
+      clearTimeout(timers.current[timerKey])
+      timers.current[timerKey] = setTimeout(
+        () => {
+          supabase.from(table).upsert({ servicio_id: servicioId, [key]: value }, { onConflict: 'servicio_id' })
+        },
+        immediate ? 0 : 550,
+      )
+    },
+    [servicioId],
+  )
 
-  async function toggleAccesorio(accesorioKey, checked) {
-    setAccesorios((prev) =>
-      prev.map((a) => (a.accesorio_key === accesorioKey ? { ...a, checked } : a)),
-    )
-    await supabase
-      .from('accesorios_instalados')
-      .update({ checked })
-      .eq('servicio_id', servicioId)
-      .eq('accesorio_key', accesorioKey)
-  }
-
-  function setAccesorioEtiqueta(accesorioKey, etiqueta) {
-    setAccesorios((prev) =>
-      prev.map((a) => (a.accesorio_key === accesorioKey ? { ...a, etiqueta } : a)),
-    )
-    const timerKey = `acc:${accesorioKey}`
-    clearTimeout(timers.current[timerKey])
-    timers.current[timerKey] = setTimeout(async () => {
-      await supabase
+  const toggleAccesorio = useCallback(
+    (accesorioKey, checked) => {
+      setAccesorios((prev) =>
+        prev.map((a) => (a.accesorio_key === accesorioKey ? { ...a, checked } : a)),
+      )
+      supabase
         .from('accesorios_instalados')
-        .update({ etiqueta })
+        .update({ checked })
         .eq('servicio_id', servicioId)
         .eq('accesorio_key', accesorioKey)
-    }, 550)
-  }
+    },
+    [servicioId],
+  )
 
-  function updateFotoLocal(fotoRow) {
+  const setAccesorioEtiqueta = useCallback(
+    (accesorioKey, etiqueta) => {
+      setAccesorios((prev) =>
+        prev.map((a) => (a.accesorio_key === accesorioKey ? { ...a, etiqueta } : a)),
+      )
+      const timerKey = `acc:${accesorioKey}`
+      clearTimeout(timers.current[timerKey])
+      timers.current[timerKey] = setTimeout(() => {
+        supabase
+          .from('accesorios_instalados')
+          .update({ etiqueta })
+          .eq('servicio_id', servicioId)
+          .eq('accesorio_key', accesorioKey)
+      }, 550)
+    },
+    [servicioId],
+  )
+
+  const updateFotoLocal = useCallback((fotoRow) => {
     setFotos((prev) => prev.map((f) => (f.id === fotoRow.id ? fotoRow : f)))
-  }
+  }, [])
 
-  function patchServicioLocal(patch) {
+  const patchServicioLocal = useCallback((patch) => {
     setServicio((prev) => (prev ? { ...prev, ...patch } : prev))
-  }
+  }, [])
 
-  const value = {
-    loading,
-    error,
-    servicio,
-    childData,
-    accesorios,
-    fotos,
-    saveStatus,
-    updateField,
-    toggleAccesorio,
-    setAccesorioEtiqueta,
-    updateFotoLocal,
-    patchServicioLocal,
-    reload: load,
-  }
+  const value = useMemo(
+    () => ({
+      loading,
+      error,
+      servicio,
+      childData,
+      accesorios,
+      fotos,
+      updateField,
+      toggleAccesorio,
+      setAccesorioEtiqueta,
+      updateFotoLocal,
+      patchServicioLocal,
+      reload: load,
+    }),
+    [loading, error, servicio, childData, accesorios, fotos, updateField, toggleAccesorio, setAccesorioEtiqueta, updateFotoLocal, patchServicioLocal, load],
+  )
 
   return <WizardContext.Provider value={value}>{children}</WizardContext.Provider>
 }

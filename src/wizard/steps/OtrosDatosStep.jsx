@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { ChecklistField } from '../../components/ChecklistField'
 import { OTROS_DATOS_GROUPS } from '../fieldsConfig'
 import { useServicioWizard } from '../ServicioWizardContext'
@@ -5,6 +6,16 @@ import { useServicioWizard } from '../ServicioWizardContext'
 export function OtrosDatosStep() {
   const { childData, updateField } = useServicioWizard()
   const values = childData.otros_datos ?? {}
+
+  const handlers = useMemo(() => {
+    const map = {}
+    for (const group of OTROS_DATOS_GROUPS) {
+      for (const field of group.fields) {
+        map[field.key] = (v) => updateField('otros_datos', field.key, v)
+      }
+    }
+    return map
+  }, [updateField])
 
   return (
     <>
@@ -18,7 +29,7 @@ export function OtrosDatosStep() {
                   key={field.key}
                   field={field}
                   value={values[field.key]}
-                  onChange={(v) => updateField('otros_datos', field.key, v)}
+                  onChange={handlers[field.key]}
                 />
               ))}
             </div>
@@ -28,7 +39,7 @@ export function OtrosDatosStep() {
                 key={field.key}
                 field={field}
                 value={values[field.key]}
-                onChange={(v) => updateField('otros_datos', field.key, v)}
+                onChange={handlers[field.key]}
               />
             ))
           )}

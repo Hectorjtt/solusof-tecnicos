@@ -14,7 +14,7 @@ export function ServicioCard({ servicio, onClick, esNuevo }) {
         <span className={`badge badge-${servicio.status}`}>{STATUS_LABEL[servicio.status]}</span>
       </div>
       <div className="text-sm muted" style={{ marginTop: 8 }}>
-        #{servicio.numero_servicio} · {formatFecha(servicio.created_at)}
+        {formatFecha(servicio.created_at)}
         {servicio.tecnico?.nombre ? ` · Técnico: ${servicio.tecnico.nombre}` : ''}
       </div>
       {esNuevo && (

@@ -1,10 +1,16 @@
+import { memo } from 'react'
+
 /**
  * Renderiza un campo del checklist (checkbox/number/text/textarea), editable
  * o de solo lectura. Se reusa tanto en los pasos del wizard del técnico como
  * en el resumen de revisión del admin, para que ambos siempre muestren
  * exactamente los mismos campos.
+ *
+ * Memoizado: si `onChange` es una referencia estable por campo (ver
+ * GenericChecklistStep/OtrosDatosStep), tocar un campo no re-renderiza los
+ * demás -- es lo que evita que el checklist se sienta pesado en el celular.
  */
-export function ChecklistField({ field, value, onChange, readOnly = false }) {
+export const ChecklistField = memo(function ChecklistField({ field, value, onChange, readOnly = false }) {
   const { key, label, type, suffix } = field
 
   if (readOnly) {
@@ -77,4 +83,4 @@ export function ChecklistField({ field, value, onChange, readOnly = false }) {
       />
     </div>
   )
-}
+})

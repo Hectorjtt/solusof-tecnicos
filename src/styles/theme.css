@@ -32,6 +32,13 @@
   box-sizing: border-box;
 }
 
+button,
+input[type="checkbox"],
+input[type="radio"],
+label {
+  touch-action: manipulation;
+}
+
 html,
 body,
 #root {

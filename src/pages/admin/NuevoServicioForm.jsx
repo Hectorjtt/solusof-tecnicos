@@ -210,9 +210,15 @@ export default function NuevoServicioForm() {
 
         {error && <p className="field-error">{error}</p>}
 
-        <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={enviando}>
-          {enviando ? 'Enviando…' : 'Enviar servicio al técnico'}
-        </button>
+        <div className="row">
+          <button type="button" className="btn" onClick={() => navigate('/admin')} disabled={enviando}>
+            Cancelar
+          </button>
+          <span className="spacer" />
+          <button type="submit" className="btn btn-primary btn-lg" disabled={enviando}>
+            {enviando ? 'Enviando…' : 'Enviar servicio al técnico'}
+          </button>
+        </div>
       </form>
     </div>
   )
