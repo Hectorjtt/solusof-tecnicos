@@ -49,10 +49,15 @@ export function useFotoUpload(servicioId, foto) {
     const path = fotoPath(servicioId, foto.slot_key)
     try {
       await subirArchivo(path, file)
+      // Busca por (servicio_id, slot_key) y no por foto.id: los slots de accesorio
+      // los crea/recrea en segundo plano la sincronía del paso 3, así que su id
+      // puede haber cambiado justo mientras el técnico elegía la foto en el picker
+      // del sistema operativo -- buscar por slot_key (estable) evita el "Reintentar".
       const { data, error } = await supabase
         .from('fotos')
         .update({ storage_path: path, subido_en: new Date().toISOString() })
-        .eq('id', foto.id)
+        .eq('servicio_id', servicioId)
+        .eq('slot_key', foto.slot_key)
         .select()
         .single()
       if (error) throw error
@@ -87,7 +92,8 @@ export function useFotoUpload(servicioId, foto) {
       const { data } = await supabase
         .from('fotos')
         .update({ storage_path: null, subido_en: null })
-        .eq('id', foto.id)
+        .eq('servicio_id', servicioId)
+        .eq('slot_key', foto.slot_key)
         .select()
         .single()
       if (data) updateFotoLocal(data)
