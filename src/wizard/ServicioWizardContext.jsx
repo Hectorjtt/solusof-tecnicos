@@ -32,6 +32,9 @@ export function ServicioWizardProvider({ servicioId, children }) {
   const [accesorios, setAccesorios] = useState([])
   const [fotos, setFotos] = useState([])
   const timers = useRef({})
+  const fotosRef = useRef(fotos)
+  fotosRef.current = fotos
+  const syncRunId = useRef(0)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -115,39 +118,57 @@ export function ServicioWizardProvider({ servicioId, children }) {
   // usando este mismo contexto para solo *ver* un servicio ya aprobado/rechazado
   // (is_admin() se salta el RLS), esto podría borrar fotos ya cerradas por una
   // simple inconsistencia histórica sin que nadie haya tocado nada.
+  //
+  // Debounced + con "run id": si el técnico marca varios accesorios seguidos,
+  // cada click (más su eco por realtime) antes disparaba su propia corrida
+  // async en paralelo -- una corrida con un snapshot de "fotos" desactualizado
+  // podía no ver la fila que OTRA corrida ya había insertado, perdiendo fotos.
+  // Ahora se espera a que se asienten los cambios y solo corre la última.
   useEffect(() => {
     if (loading) return
     if (servicio && ['aprobado', 'rechazado'].includes(servicio.status)) return
-    const wanted = accesorios.filter((a) => a.checked && a.etiqueta && a.etiqueta.trim() !== '')
-    const wantedKeys = new Set(wanted.map((a) => `accesorio:${a.accesorio_key}`))
-    const existentes = fotos.filter((f) => f.slot_tipo === 'accesorio')
+    clearTimeout(timers.current.__syncFotos)
+    const timeoutId = setTimeout(() => {
+      const runId = ++syncRunId.current
+      const wanted = accesorios.filter((a) => a.checked && a.etiqueta && a.etiqueta.trim() !== '')
+      const wantedKeys = new Set(wanted.map((a) => `accesorio:${a.accesorio_key}`))
 
-    ;(async () => {
-      for (const a of wanted) {
-        const slotKey = `accesorio:${a.accesorio_key}`
-        const existente = existentes.find((f) => f.slot_key === slotKey)
-        if (!existente) {
-          const { data } = await supabase
-            .from('fotos')
-            .insert({ servicio_id: servicioId, slot_key: slotKey, slot_tipo: 'accesorio', etiqueta: a.etiqueta })
-            .select()
-            .single()
-          if (data) setFotos((prev) => (prev.some((f) => f.id === data.id) ? prev : [...prev, data]))
-        } else if (existente.etiqueta !== a.etiqueta) {
-          await supabase.from('fotos').update({ etiqueta: a.etiqueta }).eq('id', existente.id)
-          setFotos((prev) => prev.map((f) => (f.id === existente.id ? { ...f, etiqueta: a.etiqueta } : f)))
+      ;(async () => {
+        for (const a of wanted) {
+          if (runId !== syncRunId.current) return // una corrida más nueva ya está en curso
+          const slotKey = `accesorio:${a.accesorio_key}`
+          const existente = fotosRef.current.find((f) => f.slot_key === slotKey)
+          if (!existente) {
+            const { data, error } = await supabase
+              .from('fotos')
+              .insert({ servicio_id: servicioId, slot_key: slotKey, slot_tipo: 'accesorio', etiqueta: a.etiqueta })
+              .select()
+              .single()
+            if (error && error.code !== '23505') console.error('[sync fotos] insert falló', error)
+            if (data && runId === syncRunId.current) {
+              setFotos((prev) => (prev.some((f) => f.id === data.id) ? prev : [...prev, data]))
+            }
+          } else if (existente.etiqueta !== a.etiqueta) {
+            await supabase.from('fotos').update({ etiqueta: a.etiqueta }).eq('id', existente.id)
+            if (runId === syncRunId.current) {
+              setFotos((prev) => prev.map((f) => (f.id === existente.id ? { ...f, etiqueta: a.etiqueta } : f)))
+            }
+          }
         }
-      }
-      for (const f of existentes) {
-        if (!wantedKeys.has(f.slot_key)) {
-          if (f.storage_path) await eliminarArchivo(f.storage_path)
-          await supabase.from('fotos').delete().eq('id', f.id)
-          setFotos((prev) => prev.filter((x) => x.id !== f.id))
+        for (const f of fotosRef.current.filter((f) => f.slot_tipo === 'accesorio')) {
+          if (runId !== syncRunId.current) return
+          if (!wantedKeys.has(f.slot_key)) {
+            if (f.storage_path) await eliminarArchivo(f.storage_path)
+            await supabase.from('fotos').delete().eq('id', f.id)
+            if (runId === syncRunId.current) setFotos((prev) => prev.filter((x) => x.id !== f.id))
+          }
         }
-      }
-    })()
+      })()
+    }, 400)
+    timers.current.__syncFotos = timeoutId
+    return () => clearTimeout(timeoutId)
     // Se reacciona solo a cambios de "accesorios" a propósito: es el disparador
-    // de la sincronía; "fotos" se lee del closure más reciente en cada corrida.
+    // de la sincronía; "fotos" se lee de fotosRef (siempre al día) en cada corrida.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accesorios, loading, servicioId])
 

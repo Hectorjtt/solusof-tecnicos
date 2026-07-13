@@ -51,9 +51,10 @@ abajo).
    adelante, ese admin ya puede crear el resto de las cuentas desde
    `/admin/usuarios` en la app.
 5. **Habilitar Realtime**: en el dashboard, Database → Replication, activa
-   la tabla `servicios` (y opcionalmente `accesorios_instalados` y `fotos`,
-   usadas para la sincronía en vivo del wizard). Sin este paso los inserts
-   se guardan bien, pero el aviso instantáneo al técnico no llega.
+   las tablas `servicios`, `accesorios_instalados` y `fotos`. Sin esto los
+   inserts se guardan bien, pero el aviso instantáneo al técnico no llega,
+   y el admin no ve las fotos que el técnico va subiendo en vivo (se queda
+   con las que había al cargar la página).
 
 ## Instalar y correr
 
@@ -107,8 +108,9 @@ Antes de darlo por completamente probado, verifica:
    ajustar los accesos en `ServicioResumen.jsx` y `ServicioWizardContext.jsx`
    (agregar `?.[0]`).
 2. **Realtime**: confirma que el paso 5 de "Configurar el proyecto" (activar
-   replication en `servicios`) quedó hecho — si no, el aviso instantáneo al
-   técnico no va a llegar (aunque el servicio sí se guarda bien).
+   replication en `servicios`, `accesorios_instalados` y `fotos`) quedó
+   hecho — si no, el aviso instantáneo al técnico no va a llegar y el admin
+   no verá las fotos en vivo (aunque todo se guarde bien en la base).
 3. **Login/roles**: probar el flujo completo con un admin y un técnico real
    (creado desde `/admin/usuarios`) — incluyendo que un técnico no pueda ver
    ni editar servicios que no son suyos (protegido por RLS, pero vale la

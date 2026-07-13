@@ -13,6 +13,13 @@ function FirmaPad({ sigRef, onBegin }) {
         penColor="#16213a"
         canvasProps={{ className: 'firma-canvas' }}
         onBegin={onBegin}
+        // Por default, react-signature-canvas borra el lienzo en CUALQUIER evento
+        // "resize" de window -- y en celular, el teclado abriendo/cerrando (al
+        // tocar el campo de nombre) cuenta como resize. Con dos firmas en la misma
+        // pantalla, tocar el campo de nombre del técnico borraba la firma del
+        // cliente ya puesta (y viceversa). Desactivado: nuestro canvas no depende
+        // de recalcular tamaño en caliente.
+        clearOnResize={false}
       />
     </div>
   )
