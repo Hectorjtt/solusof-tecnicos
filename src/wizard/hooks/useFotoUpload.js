@@ -65,7 +65,9 @@ export function useFotoUpload(servicioId, foto) {
       setStatus('subida')
       setHasPending(false)
       await deletePending(pendingKey(servicioId, foto.slot_key))
-    } catch {
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[foto upload] falló', foto.slot_tipo, foto.slot_key, err)
       setStatus('error')
       setHasPending(true)
       await savePending(pendingKey(servicioId, foto.slot_key), file, {
