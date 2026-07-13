@@ -1,7 +1,9 @@
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 
-export function Topbar({ title }) {
+export function Topbar({ title, backTo }) {
   const { profile, signOut } = useAuth()
+  const navigate = useNavigate()
 
   return (
     <header className="topbar">
@@ -10,6 +12,11 @@ export function Topbar({ title }) {
         <span>{title ?? 'Solusof Técnicos'}</span>
       </div>
       <div className="topbar-user">
+        {backTo && (
+          <button className="btn btn-ghost" onClick={() => navigate(backTo)}>
+            Volver
+          </button>
+        )}
         <span>{profile?.nombre}</span>
         <button className="btn btn-ghost" onClick={signOut}>
           Salir

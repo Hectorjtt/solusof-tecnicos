@@ -88,7 +88,7 @@ function ServicioWizardInner() {
 
   return (
     <div className="app-shell">
-      <Topbar title={`Servicio #${servicio.numero_servicio}`} />
+      <Topbar title={`Servicio #${servicio.numero_servicio}`} backTo="/tecnico" />
 
       {servicio.status === 'asignado' && (
         <TarjetaIniciar servicio={servicio} onIniciado={patchServicioLocal} />
