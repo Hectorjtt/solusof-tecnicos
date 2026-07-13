@@ -182,7 +182,16 @@ export function ServicioWizardProvider({ servicioId, children }) {
       clearTimeout(timers.current[timerKey])
       timers.current[timerKey] = setTimeout(
         () => {
-          supabase.from(table).upsert({ servicio_id: servicioId, [key]: value }, { onConflict: 'servicio_id' })
+          // El builder de supabase-js es "thenable": la petición HTTP solo se
+          // dispara cuando algo llama a .then()/await sobre él. Sin esto, la
+          // llamada de abajo solo ARMABA la petición y nunca la mandaba --
+          // el campo se veía guardado en pantalla pero nunca llegaba a la base.
+          supabase
+            .from(table)
+            .upsert({ servicio_id: servicioId, [key]: value }, { onConflict: 'servicio_id' })
+            .then(({ error }) => {
+              if (error) console.error('[updateField] no se pudo guardar', table, key, error)
+            })
         },
         immediate ? 0 : 550,
       )
@@ -200,6 +209,9 @@ export function ServicioWizardProvider({ servicioId, children }) {
         .update({ checked })
         .eq('servicio_id', servicioId)
         .eq('accesorio_key', accesorioKey)
+        .then(({ error }) => {
+          if (error) console.error('[toggleAccesorio] no se pudo guardar', accesorioKey, error)
+        })
     },
     [servicioId],
   )
@@ -217,6 +229,9 @@ export function ServicioWizardProvider({ servicioId, children }) {
           .update({ etiqueta })
           .eq('servicio_id', servicioId)
           .eq('accesorio_key', accesorioKey)
+          .then(({ error }) => {
+            if (error) console.error('[setAccesorioEtiqueta] no se pudo guardar', accesorioKey, error)
+          })
       }, 550)
     },
     [servicioId],
