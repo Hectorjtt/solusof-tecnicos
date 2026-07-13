@@ -55,7 +55,10 @@ export function ServicioWizardShell({ servicioId }) {
           {stepIndex + 1}. {step.label}
         </div>
         <div className="wizard-step-sub">
-          Paso {stepIndex + 1} de {CHECKLIST_STEPS.length} — nada aquí es obligatorio, puedes dejarlo en blanco.
+          Paso {stepIndex + 1} de {CHECKLIST_STEPS.length}
+          {step.key === 'evidencias'
+            ? ' — todas las fotos son obligatorias para poder finalizar.'
+            : ' — nada aquí es obligatorio, puedes dejarlo en blanco.'}
         </div>
 
         {renderStep(step, servicioId)}

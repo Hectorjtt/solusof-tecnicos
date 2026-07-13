@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Topbar } from '../../components/Topbar'
 import { ServicioResumen } from '../../components/ServicioResumen'
 import { useAuth } from '../../auth/AuthContext'
-import { getServicioCompleto, aprobarServicio, rechazarServicio, guardarReportePdfPath } from '../../lib/servicios'
+import { ServicioWizardProvider, useServicioWizard } from '../../wizard/ServicioWizardContext'
+import { aprobarServicio, rechazarServicio, guardarReportePdfPath } from '../../lib/servicios'
 import { subirArchivo, reportePdfPath, getSignedUrl } from '../../lib/storage'
 import { STATUS_LABEL } from '../../lib/estado'
 
@@ -18,33 +19,16 @@ function descargarBlob(blob, nombre) {
   URL.revokeObjectURL(url)
 }
 
-export default function AdminServicioDetalle() {
-  const { id } = useParams()
+function AdminServicioDetalleInner() {
   const navigate = useNavigate()
   const { profile } = useAuth()
-  const [servicio, setServicio] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const { id } = useParams()
+  const { loading, error: loadError, servicio, reload } = useServicioWizard()
   const [mostrarRechazo, setMostrarRechazo] = useState(false)
   const [motivo, setMotivo] = useState('')
   const [procesando, setProcesando] = useState(false)
   const [generandoPdf, setGenerandoPdf] = useState(false)
   const [error, setError] = useState('')
-
-  async function cargar() {
-    setLoading(true)
-    try {
-      const data = await getServicioCompleto(id)
-      setServicio(data)
-      return data
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    cargar()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id])
 
   async function generarYSubirPdf(servicioCompleto) {
     const { generarReportePDF, nombreArchivoReporte } = await import('../../lib/pdfReporte')
@@ -60,12 +44,12 @@ export default function AdminServicioDetalle() {
     setProcesando(true)
     try {
       await aprobarServicio(id, profile.id)
-      const actualizado = await cargar()
+      const actualizado = await reload()
       setGenerandoPdf(true)
       try {
         const { blob, nombre } = await generarYSubirPdf(actualizado)
         descargarBlob(blob, nombre)
-        await cargar()
+        await reload()
       } catch (pdfErr) {
         setError('El servicio se aprobó, pero no se pudo generar el PDF: ' + (pdfErr.message ?? pdfErr))
       } finally {
@@ -88,7 +72,7 @@ export default function AdminServicioDetalle() {
       } else {
         const { blob, nombre } = await generarYSubirPdf(servicio)
         descargarBlob(blob, nombre)
-        await cargar()
+        await reload()
       }
     } catch (e) {
       setError('No se pudo generar el PDF: ' + (e.message ?? e))
@@ -105,7 +89,7 @@ export default function AdminServicioDetalle() {
       await rechazarServicio(id, profile.id, motivo)
       setMostrarRechazo(false)
       setMotivo('')
-      await cargar()
+      await reload()
     } catch (e) {
       setError(e.message ?? 'No se pudo rechazar.')
     } finally {
@@ -121,10 +105,10 @@ export default function AdminServicioDetalle() {
     )
   }
 
-  if (!servicio) {
+  if (loadError || !servicio) {
     return (
       <div className="center-screen">
-        <p>Servicio no encontrado.</p>
+        <p>{loadError ?? 'Servicio no encontrado.'}</p>
       </div>
     )
   }
@@ -155,7 +139,17 @@ export default function AdminServicioDetalle() {
           </div>
         )}
 
-        <ServicioResumen servicio={servicio} />
+        {puedeRevisar && (
+          <div className="panel">
+            <p className="text-sm muted" style={{ margin: 0 }}>
+              Puedes corregir el checklist antes de aprobar: marca lo que el técnico
+              haya olvidado, desmarca lo que sobre y edita los textos. Los cambios se
+              guardan solos.
+            </p>
+          </div>
+        )}
+
+        <ServicioResumen checklistEditable={puedeRevisar} />
 
         {puedeRevisar && (
           <div className="panel">
@@ -198,5 +192,14 @@ export default function AdminServicioDetalle() {
         {error && !puedeRevisar && <p className="field-error" style={{ margin: '0 16px 16px' }}>{error}</p>}
       </div>
     </div>
+  )
+}
+
+export default function AdminServicioDetalle() {
+  const { id } = useParams()
+  return (
+    <ServicioWizardProvider servicioId={id}>
+      <AdminServicioDetalleInner />
+    </ServicioWizardProvider>
   )
 }

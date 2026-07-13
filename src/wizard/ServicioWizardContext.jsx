@@ -73,8 +73,10 @@ export function ServicioWizardProvider({ servicioId, children }) {
       ])
       setAccesorios(accRes.data ?? [])
       setFotos(fotoRes.data ?? [])
+      return full
     } catch (e) {
       setError(e.message ?? 'No se pudo cargar el servicio.')
+      return null
     } finally {
       setLoading(false)
     }
@@ -109,8 +111,13 @@ export function ServicioWizardProvider({ servicioId, children }) {
 
   // Sincronía paso 3 -> paso 8: reconcilia los slots de foto por accesorio cada
   // vez que cambia la lista de accesorios (marcado/desmarcado, o etiqueta editada).
+  // Solo mientras el servicio sigue editable -- de lo contrario, con el admin
+  // usando este mismo contexto para solo *ver* un servicio ya aprobado/rechazado
+  // (is_admin() se salta el RLS), esto podría borrar fotos ya cerradas por una
+  // simple inconsistencia histórica sin que nadie haya tocado nada.
   useEffect(() => {
     if (loading) return
+    if (servicio && ['aprobado', 'rechazado'].includes(servicio.status)) return
     const wanted = accesorios.filter((a) => a.checked && a.etiqueta && a.etiqueta.trim() !== '')
     const wantedKeys = new Set(wanted.map((a) => `accesorio:${a.accesorio_key}`))
     const existentes = fotos.filter((f) => f.slot_tipo === 'accesorio')

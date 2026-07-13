@@ -256,7 +256,7 @@ function datosGeneralesTexto(servicio) {
     `Por medio del presente documento, GPS Solusof hace constar que se realizó un servicio de ` +
     `${tipoLabel.toLowerCase()} de equipo GPS a la unidad "${unidad}" del cliente ${servicio.cliente_nombre}, ` +
     `con fecha ${fecha}. El técnico responsable de la instalación fue ${servicio.tecnico?.nombre ?? '—'}. ` +
-    `A continuación se detalla el checklist de trabajo realizado, la evidencia fotográfica y la firma de conformidad del técnico.`
+    `A continuación se detalla el checklist de trabajo realizado, la evidencia fotográfica y las firmas de conformidad del técnico y del cliente.`
   )
 }
 
@@ -429,43 +429,74 @@ async function dibujarFotos(r, servicio) {
   }
 }
 
+/** Dibuja un bloque de firma (imagen + nombre + rol + fecha) en la columna [x, x+w]. */
+async function dibujarBloqueFirma(r, { x, w, storagePath, nombre, rol, firmadoEn }) {
+  const yInicio = r.y
+  if (storagePath) {
+    try {
+      const url = await getSignedUrl(storagePath)
+      const { dataUrl, width, height } = await cargarImagenEscalada(url, 900)
+      const h = w / (width / height)
+      r.doc.setDrawColor(...BORDER)
+      r.doc.rect(x, yInicio, w + 6, 34)
+      r.doc.addImage(dataUrl, 'JPEG', x + 3, yInicio + 3, w, Math.min(h, 28))
+    } catch {
+      r.doc.setFont('helvetica', 'italic')
+      r.doc.setFontSize(8.5)
+      r.doc.setTextColor(...MUTED)
+      r.doc.text('No se pudo cargar la firma.', x, yInicio + 17)
+    }
+  } else {
+    r.doc.setFont('helvetica', 'italic')
+    r.doc.setFontSize(8.5)
+    r.doc.setTextColor(...MUTED)
+    r.doc.text('Sin firma registrada.', x, yInicio + 17)
+  }
+
+  let y = yInicio + 38
+  r.doc.setFont('helvetica', 'bold')
+  r.doc.setFontSize(9)
+  r.doc.setTextColor(...TEXT)
+  r.doc.text(nombre || '—', x, y)
+  y += 4.5
+  r.doc.setFont('helvetica', 'normal')
+  r.doc.setFontSize(8)
+  r.doc.setTextColor(...MUTED)
+  r.doc.text(rol, x, y)
+  y += 4
+  if (firmadoEn) {
+    r.doc.text(`Firmado el ${formatFecha(firmadoEn)}`, x, y)
+    y += 8
+  } else {
+    y += 4
+  }
+  return y
+}
+
 async function dibujarFirma(r, servicio) {
   r.sectionTitle('Firma de conformidad')
   r.ensureSpace(45)
 
-  if (servicio.firma_tecnico_storage_path) {
-    try {
-      const url = await getSignedUrl(servicio.firma_tecnico_storage_path)
-      const { dataUrl, width, height } = await cargarImagenEscalada(url, 900)
-      const w = 70
-      const h = w / (width / height)
-      r.doc.setDrawColor(...BORDER)
-      r.doc.rect(MARGIN, r.y, w + 6, 34)
-      r.doc.addImage(dataUrl, 'JPEG', MARGIN + 3, r.y + 3, w, Math.min(h, 28))
-      r.y += 38
-    } catch {
-      r.parrafo('No se pudo cargar la firma.', { color: MUTED })
-    }
-  } else {
-    r.parrafo('Sin firma registrada.', { color: MUTED })
-  }
-
-  r.doc.setFont('helvetica', 'bold')
-  r.doc.setFontSize(9)
-  r.doc.setTextColor(...TEXT)
-  r.doc.text(servicio.firma_tecnico_nombre || servicio.tecnico?.nombre || '—', MARGIN, r.y)
-  r.y += 4.5
-  r.doc.setFont('helvetica', 'normal')
-  r.doc.setFontSize(8)
-  r.doc.setTextColor(...MUTED)
-  r.doc.text('Técnico instalador', MARGIN, r.y)
-  r.y += 4
-  if (servicio.firma_tecnico_en) {
-    r.doc.text(`Firmado el ${formatFecha(servicio.firma_tecnico_en)}`, MARGIN, r.y)
-    r.y += 8
-  } else {
-    r.y += 4
-  }
+  const colW = (CONTENT_W - 10) / 2
+  const [yTecnico, yCliente] = await Promise.all([
+    dibujarBloqueFirma(r, {
+      x: MARGIN,
+      w: colW - 6,
+      storagePath: servicio.firma_tecnico_storage_path,
+      nombre: servicio.firma_tecnico_nombre || servicio.tecnico?.nombre,
+      rol: 'Técnico instalador',
+      firmadoEn: servicio.firma_tecnico_en,
+    }),
+    dibujarBloqueFirma(r, {
+      x: MARGIN + colW + 10,
+      w: colW - 6,
+      storagePath: servicio.firma_cliente_storage_path,
+      nombre: servicio.firma_cliente_nombre,
+      rol: 'Cliente',
+      firmadoEn: servicio.firma_cliente_en,
+    }),
+  ])
+  r.y = Math.max(yTecnico, yCliente)
 
   if (servicio.status === 'aprobado' && servicio.revisado_en) {
     r.ensureSpace(10)

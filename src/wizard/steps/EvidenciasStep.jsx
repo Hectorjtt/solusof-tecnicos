@@ -20,9 +20,9 @@ export function EvidenciasStep({ servicioId }) {
   return (
     <div className="panel">
       <p className="text-sm muted" style={{ marginTop: 0 }}>
-        Ninguna foto es obligatoria. Las de accesorios aparecen según lo que
-        marcaste en el paso "Accesorios instalados" — si falta una, regresa a
-        ese paso y márcalo.
+        Todas estas fotos son obligatorias para poder finalizar el servicio.
+        Las de accesorios aparecen según lo que marcaste en el paso
+        "Accesorios instalados" — si falta una, regresa a ese paso y márcalo.
       </p>
       <div className="foto-grid">
         {ordenadas.map((foto) => (

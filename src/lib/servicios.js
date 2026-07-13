@@ -72,15 +72,19 @@ export async function iniciarServicio(id) {
   return data
 }
 
-export async function finalizarServicio(id, { storagePath, nombre }) {
+export async function finalizarServicio(id, { tecnico, cliente }) {
+  const ahora = new Date().toISOString()
   const { data, error } = await supabase
     .from('servicios')
     .update({
       status: 'finalizado',
-      finalizado_en: new Date().toISOString(),
-      firma_tecnico_storage_path: storagePath,
-      firma_tecnico_nombre: nombre,
-      firma_tecnico_en: new Date().toISOString(),
+      finalizado_en: ahora,
+      firma_tecnico_storage_path: tecnico.storagePath,
+      firma_tecnico_nombre: tecnico.nombre,
+      firma_tecnico_en: ahora,
+      firma_cliente_storage_path: cliente.storagePath,
+      firma_cliente_nombre: cliente.nombre,
+      firma_cliente_en: ahora,
     })
     .eq('id', id)
     .select()

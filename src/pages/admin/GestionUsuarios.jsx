@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Topbar } from '../../components/Topbar'
 import { supabase } from '../../lib/supabaseClient'
 
 const initialForm = { nombre: '', email: '', telefono: '', password: '', role: 'tecnico' }
 
 export default function GestionUsuarios() {
+  const navigate = useNavigate()
   const [usuarios, setUsuarios] = useState([])
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState(initialForm)
@@ -57,6 +59,13 @@ export default function GestionUsuarios() {
     <div className="app-shell">
       <Topbar title="Usuarios" />
       <div className="container">
+        <div className="panel row-between">
+          <span className="muted text-sm">Alta y gestión de cuentas de técnicos y admins</span>
+          <button type="button" className="btn" onClick={() => navigate('/admin')}>
+            Volver
+          </button>
+        </div>
+
         <div className="panel">
           <h2>Nueva cuenta</h2>
           <form onSubmit={crear}>

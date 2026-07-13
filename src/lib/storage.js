@@ -10,6 +10,10 @@ export function firmaPath(servicioId) {
   return `servicios/${servicioId}/firma.png`
 }
 
+export function firmaClientePath(servicioId) {
+  return `servicios/${servicioId}/firma_cliente.png`
+}
+
 export function reportePdfPath(servicioId) {
   return `servicios/${servicioId}/reporte.pdf`
 }

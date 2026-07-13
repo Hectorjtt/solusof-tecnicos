@@ -106,7 +106,7 @@ function ServicioWizardInner() {
               </p>
             )}
           </div>
-          <ServicioResumen servicio={servicio} />
+          <ServicioResumen fotosEditable={servicio.status === 'finalizado'} />
           <button
             type="button"
             className="btn btn-block"
