@@ -13,6 +13,27 @@ const SERVICIO_COMPLETO_SELECT = `
   fotos ( * )
 `
 
+// Tablas hijas 1:1 con servicios (servicio_id es PK y FK a la vez). PostgREST
+// normalmente las embebe como objeto único, pero según el estado de su caché
+// de esquema a veces las devuelve como arreglo de un solo elemento -- sin
+// normalizar esto, cualquier consumidor que lea servicio[tabla].campo ve
+// "undefined" para todo (checklist completo se ve vacío) aunque sí esté
+// guardado en la base.
+const FLAT_CHILD_TABLES = [
+  'recepcion_verificacion',
+  'instalacion_gps',
+  'pruebas_funcionamiento',
+  'entrega_servicio',
+  'otros_datos',
+]
+
+function normalizarEmbeds1a1(servicio) {
+  for (const t of FLAT_CHILD_TABLES) {
+    if (Array.isArray(servicio[t])) servicio[t] = servicio[t][0] ?? null
+  }
+  return servicio
+}
+
 export async function listTecnicos() {
   const { data, error } = await supabase
     .from('profiles')
@@ -58,7 +79,7 @@ export async function getServicioCompleto(id) {
     .eq('id', id)
     .single()
   if (error) throw error
-  return data
+  return normalizarEmbeds1a1(data)
 }
 
 export async function iniciarServicio(id) {
