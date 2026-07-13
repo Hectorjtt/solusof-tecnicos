@@ -60,10 +60,10 @@ export default function GestionUsuarios() {
       <Topbar title="Usuarios" />
       <div className="container">
         <div className="panel row-between">
-          <span className="muted text-sm">Alta y gestión de cuentas de técnicos y admins</span>
-          <button type="button" className="btn" onClick={() => navigate('/admin')}>
+          <button type="button" className="btn btn-primary" onClick={() => navigate('/admin')}>
             Volver
           </button>
+          <span className="muted text-sm">Alta y gestión de cuentas de técnicos y admins</span>
         </div>
 
         <div className="panel">

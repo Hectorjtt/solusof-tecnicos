@@ -120,16 +120,16 @@ function AdminServicioDetalleInner() {
       <Topbar title={`Servicio #${servicio.numero_servicio}`} />
       <div className="container">
         <div className="panel row-between">
-          <span className={`badge badge-${servicio.status}`}>{STATUS_LABEL[servicio.status]}</span>
+          <button type="button" className="btn btn-primary" onClick={() => navigate('/admin')}>
+            Volver
+          </button>
           <div className="row">
             {servicio.status === 'aprobado' && (
               <button type="button" className="btn" onClick={descargarPdf} disabled={generandoPdf}>
                 {generandoPdf ? 'Generando…' : 'Descargar PDF'}
               </button>
             )}
-            <button type="button" className="btn" onClick={() => navigate('/admin')}>
-              Volver
-            </button>
+            <span className={`badge badge-${servicio.status}`}>{STATUS_LABEL[servicio.status]}</span>
           </div>
         </div>
 

@@ -5,12 +5,7 @@ import { ServicioResumen } from '../../components/ServicioResumen'
 import { ServicioWizardProvider, useServicioWizard } from '../../wizard/ServicioWizardContext'
 import { ServicioWizardShell } from '../../wizard/ServicioWizardShell'
 import { iniciarServicio } from '../../lib/servicios'
-
-const ESTADO_LABEL = {
-  finalizado: 'Finalizado — esperando revisión del admin',
-  aprobado: 'Aprobado',
-  rechazado: 'Rechazado',
-}
+import { STATUS_LABEL } from '../../lib/estado'
 
 function TarjetaIniciar({ servicio, onIniciado }) {
   const [iniciando, setIniciando] = useState(false)
@@ -88,7 +83,16 @@ function ServicioWizardInner() {
 
   return (
     <div className="app-shell">
-      <Topbar title={`Servicio #${servicio.numero_servicio}`} backTo="/tecnico" />
+      <Topbar title={`Servicio #${servicio.numero_servicio}`} />
+
+      <div className="container" style={{ flex: 'none', paddingBottom: 0 }}>
+        <div className="panel row-between">
+          <button type="button" className="btn btn-primary" onClick={() => navigate('/tecnico')}>
+            Volver
+          </button>
+          <span className={`badge badge-${servicio.status}`}>{STATUS_LABEL[servicio.status]}</span>
+        </div>
+      </div>
 
       {servicio.status === 'asignado' && (
         <TarjetaIniciar servicio={servicio} onIniciado={patchServicioLocal} />
@@ -98,14 +102,11 @@ function ServicioWizardInner() {
 
       {['finalizado', 'aprobado', 'rechazado'].includes(servicio.status) && (
         <div className="container">
-          <div className="panel" style={{ textAlign: 'center' }}>
-            <span className={`badge badge-${servicio.status}`}>{ESTADO_LABEL[servicio.status]}</span>
-            {servicio.status === 'rechazado' && servicio.motivo_rechazo && (
-              <p className="text-sm" style={{ marginTop: 10 }}>
-                Motivo: {servicio.motivo_rechazo}
-              </p>
-            )}
-          </div>
+          {servicio.status === 'rechazado' && servicio.motivo_rechazo && (
+            <div className="panel">
+              <strong>Motivo de rechazo:</strong> {servicio.motivo_rechazo}
+            </div>
+          )}
           <ServicioResumen fotosEditable={servicio.status === 'finalizado'} />
           <button
             type="button"
