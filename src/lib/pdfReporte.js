@@ -79,10 +79,9 @@ function cargarImagenEscalada(url, maxDim = 1400) {
 }
 
 class Reporte {
-  constructor(doc, logo, meta) {
+  constructor(doc, logo) {
     this.doc = doc
     this.logo = logo
-    this.meta = meta
     this.page = 0
     this.y = 0
   }
@@ -113,11 +112,7 @@ class Reporte {
 
     doc.setFontSize(8)
     doc.setTextColor(...MUTED)
-    doc.text('229 286 1072  ·  gps@solusof.com  ·  www.solusofgps.com', PAGE_W - MARGIN, 9, { align: 'right' })
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(...NAVY)
-    doc.setFontSize(8.5)
-    doc.text(`Servicio #${this.meta.numero}`, PAGE_W - MARGIN, 14.5, { align: 'right' })
+    doc.text('229 286 1072  ·  gps@solusof.com  ·  www.solusofgps.com', PAGE_W - MARGIN, 12, { align: 'right' })
 
     doc.setDrawColor(...NAVY)
     doc.setLineWidth(0.9)
@@ -515,7 +510,7 @@ async function dibujarFirma(r, servicio) {
 export async function generarReportePDF(servicio) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const logo = await cargarLogo()
-  const r = new Reporte(doc, logo, { numero: servicio.numero_servicio })
+  const r = new Reporte(doc, logo)
 
   await dibujarPortada(r, servicio)
   dibujarChecklist(r, servicio)

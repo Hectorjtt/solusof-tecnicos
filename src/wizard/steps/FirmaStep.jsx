@@ -27,11 +27,14 @@ function FirmaPad({ sigRef, onBegin }) {
 
 export function FirmaStep({ servicioId, onFinalizado }) {
   const { profile } = useAuth()
-  const { reload, fotos, servicio } = useServicioWizard()
+  const { reload, fotos } = useServicioWizard()
   const sigTecnicoRef = useRef(null)
   const sigClienteRef = useRef(null)
   const [nombreTecnico, setNombreTecnico] = useState(profile?.nombre ?? '')
-  const [nombreCliente, setNombreCliente] = useState(servicio?.cliente_nombre ?? '')
+  // No se autollena con el cliente_nombre general del servicio: quien firma
+  // en el sitio puede ser otra persona (empleado, chofer, etc.), así que el
+  // técnico siempre escribe el nombre real de quien está firmando.
+  const [nombreCliente, setNombreCliente] = useState('')
   const [vacioTecnico, setVacioTecnico] = useState(true)
   const [vacioCliente, setVacioCliente] = useState(true)
   const [enviando, setEnviando] = useState(false)
@@ -65,6 +68,10 @@ export function FirmaStep({ servicioId, onFinalizado }) {
     }
     if (!sigTecnicoRef.current || sigTecnicoRef.current.isEmpty()) {
       setError('Falta la firma del técnico para poder finalizar el servicio.')
+      return
+    }
+    if (!nombreCliente.trim()) {
+      setError('Falta el nombre de quien firma como cliente.')
       return
     }
     if (!sigClienteRef.current || sigClienteRef.current.isEmpty()) {
@@ -130,10 +137,11 @@ export function FirmaStep({ servicioId, onFinalizado }) {
         Pásale el celular al cliente para que confirme el servicio con su firma.
       </p>
       <div className="field">
-        <label htmlFor="firma-nombre-cliente">Nombre del cliente</label>
+        <label htmlFor="firma-nombre-cliente">Nombre de quien firma</label>
         <input
           id="firma-nombre-cliente"
           type="text"
+          placeholder="Nombre de la persona que va a firmar"
           value={nombreCliente}
           onChange={(e) => setNombreCliente(e.target.value)}
         />
