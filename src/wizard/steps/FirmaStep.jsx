@@ -30,7 +30,9 @@ export function FirmaStep({ servicioId, onFinalizado }) {
   const { reload, fotos } = useServicioWizard()
   const sigTecnicoRef = useRef(null)
   const sigClienteRef = useRef(null)
-  const [nombreTecnico, setNombreTecnico] = useState(profile?.nombre ?? '')
+  // Fijo, no editable: la firma del técnico siempre debe quedar a nombre de
+  // la cuenta con la que inició sesión, no de lo que alguien escriba a mano.
+  const nombreTecnico = profile?.nombre ?? ''
   // No se autollena con el cliente_nombre general del servicio: quien firma
   // en el sitio puede ser otra persona (empleado, chofer, etc.), así que el
   // técnico siempre escribe el nombre real de quien está firmando.
@@ -116,13 +118,8 @@ export function FirmaStep({ servicioId, onFinalizado }) {
 
       <h3 style={{ marginTop: 0 }}>Firma del técnico</h3>
       <div className="field">
-        <label htmlFor="firma-nombre-tecnico">Nombre del técnico</label>
-        <input
-          id="firma-nombre-tecnico"
-          type="text"
-          value={nombreTecnico}
-          onChange={(e) => setNombreTecnico(e.target.value)}
-        />
+        <label>Nombre del técnico</label>
+        <p style={{ margin: 0, fontWeight: 600 }}>{nombreTecnico}</p>
       </div>
       <label className="text-sm muted">Firma</label>
       <FirmaPad sigRef={sigTecnicoRef} onBegin={() => setVacioTecnico(false)} />
