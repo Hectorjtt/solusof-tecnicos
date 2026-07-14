@@ -24,7 +24,7 @@ function mergeRow(prev, payload) {
   return next
 }
 
-export function ServicioWizardProvider({ servicioId, children }) {
+export function ServicioWizardProvider({ servicioId, children, poll = false }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [servicio, setServicio] = useState(null)
@@ -36,16 +36,28 @@ export function ServicioWizardProvider({ servicioId, children }) {
   fotosRef.current = fotos
   const syncRunId = useRef(0)
 
+  // Trae servicio + checklist + accesorios + fotos, sin la semilla de catálogo
+  // (esa solo hace falta una vez). La usa tanto la carga inicial como el
+  // respaldo por polling de abajo.
+  const fetchAll = useCallback(async () => {
+    const full = await getServicioCompleto(servicioId)
+    setServicio(full)
+    const nextChild = {}
+    for (const t of CHILD_TABLES) nextChild[t] = full[t] ?? {}
+    setChildData(nextChild)
+    const [accRes, fotoRes] = await Promise.all([
+      supabase.from('accesorios_instalados').select('*').eq('servicio_id', servicioId).order('updated_at'),
+      supabase.from('fotos').select('*').eq('servicio_id', servicioId),
+    ])
+    setAccesorios(accRes.data ?? [])
+    setFotos(fotoRes.data ?? [])
+    return full
+  }, [servicioId])
+
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const full = await getServicioCompleto(servicioId)
-      setServicio(full)
-      const nextChild = {}
-      for (const t of CHILD_TABLES) nextChild[t] = full[t] ?? {}
-      setChildData(nextChild)
-
       // Semilla idempotente: garantiza que existan las filas de catálogo sin pisar las ya guardadas.
       await supabase.from('accesorios_instalados').upsert(
         ACCESORIOS_CATALOG.map((a) => ({
@@ -65,29 +77,30 @@ export function ServicioWizardProvider({ servicioId, children }) {
         })),
         { onConflict: 'servicio_id,slot_key', ignoreDuplicates: true },
       )
-
-      const [accRes, fotoRes] = await Promise.all([
-        supabase
-          .from('accesorios_instalados')
-          .select('*')
-          .eq('servicio_id', servicioId)
-          .order('updated_at'),
-        supabase.from('fotos').select('*').eq('servicio_id', servicioId),
-      ])
-      setAccesorios(accRes.data ?? [])
-      setFotos(fotoRes.data ?? [])
-      return full
+      return await fetchAll()
     } catch (e) {
       setError(e.message ?? 'No se pudo cargar el servicio.')
       return null
     } finally {
       setLoading(false)
     }
-  }, [servicioId])
+  }, [servicioId, fetchAll])
 
   useEffect(() => {
     load()
   }, [load])
+
+  // Respaldo por si el realtime se desconecta sin avisar (pasa en websockets
+  // de larga duración, sobre todo en celular): mientras alguien tiene la
+  // pantalla abierta viendo un servicio ajeno en vivo (ej. el admin viendo al
+  // técnico trabajar), se refresca solo cada rato aunque el push falle.
+  useEffect(() => {
+    if (!poll) return
+    const intervalId = setInterval(() => {
+      fetchAll().catch(() => {})
+    }, 12000)
+    return () => clearInterval(intervalId)
+  }, [poll, fetchAll])
 
   // Realtime scoped a este servicio: refleja cambios hechos desde otra pestaña/dispositivo
   // (ej. admin viendo en vivo mientras el técnico llena el checklist).

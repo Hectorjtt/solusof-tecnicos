@@ -201,7 +201,7 @@ function AdminServicioDetalleInner() {
 export default function AdminServicioDetalle() {
   const { id } = useParams()
   return (
-    <ServicioWizardProvider servicioId={id}>
+    <ServicioWizardProvider servicioId={id} poll>
       <AdminServicioDetalleInner />
     </ServicioWizardProvider>
   )
