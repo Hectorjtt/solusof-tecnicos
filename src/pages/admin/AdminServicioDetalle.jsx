@@ -113,7 +113,11 @@ function AdminServicioDetalleInner() {
     )
   }
 
+  // "Aprobar/Rechazar" solo aplica mientras está pendiente de revisión, pero el
+  // checklist se puede seguir corrigiendo aunque el servicio ya esté cerrado
+  // (aprobado o rechazado) -- is_admin() ya se salta esa restricción en RLS.
   const puedeRevisar = servicio.status === 'finalizado'
+  const checklistEditable = true
 
   return (
     <div className="app-shell">
@@ -139,17 +143,16 @@ function AdminServicioDetalleInner() {
           </div>
         )}
 
-        {puedeRevisar && (
+        {checklistEditable && (
           <div className="panel">
             <p className="text-sm muted" style={{ margin: 0 }}>
-              Puedes corregir el checklist antes de aprobar: marca lo que el técnico
-              haya olvidado, desmarca lo que sobre y edita los textos. Los cambios se
-              guardan solos.
+              Puedes corregir el checklist: marca lo que el técnico haya olvidado,
+              desmarca lo que sobre y edita los textos. Los cambios se guardan solos.
             </p>
           </div>
         )}
 
-        <ServicioResumen checklistEditable={puedeRevisar} />
+        <ServicioResumen checklistEditable={checklistEditable} />
 
         {puedeRevisar && (
           <div className="panel">

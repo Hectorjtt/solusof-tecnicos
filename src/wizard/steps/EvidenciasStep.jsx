@@ -7,8 +7,13 @@ function ordenSlots(fotos) {
   const ordenFijo = FOTOS_FIJAS_CATALOG.map((f) => f.key)
   const ordenAccesorio = ACCESORIOS_CATALOG.map((a) => `accesorio:${a.key}`)
   return [...fotos].sort((a, b) => {
-    const rank = (f) =>
-      f.slot_tipo === 'fija' ? ordenFijo.indexOf(f.slot_key) : 100 + ordenAccesorio.indexOf(f.slot_key)
+    const rank = (f) => {
+      if (f.slot_tipo === 'fija') return ordenFijo.indexOf(f.slot_key)
+      // Los slots de "subfotos" (ej. accesorio:sensor_puerta:piloto) llevan el
+      // prefijo del accesorio -- se agrupan con él aunque el key exacto no matchee.
+      const idx = ordenAccesorio.findIndex((k) => f.slot_key === k || f.slot_key.startsWith(`${k}:`))
+      return 100 + (idx === -1 ? 999 : idx)
+    }
     return rank(a) - rank(b)
   })
 }

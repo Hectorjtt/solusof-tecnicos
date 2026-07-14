@@ -64,17 +64,17 @@ export function ServicioWizardShell({ servicioId }) {
         {renderStep(step, servicioId)}
       </div>
 
-      {step.key !== 'firma' && (
-        <div className="wizard-nav">
-          <button type="button" className="btn" onClick={() => goTo(stepIndex - 1)} disabled={isFirst}>
-            Atrás
-          </button>
-          <span className="spacer" />
+      <div className="wizard-nav">
+        <button type="button" className="btn" onClick={() => goTo(stepIndex - 1)} disabled={isFirst}>
+          Atrás
+        </button>
+        <span className="spacer" />
+        {step.key !== 'firma' && (
           <button type="button" className="btn btn-primary" onClick={() => goTo(stepIndex + 1)} disabled={isLast}>
             Siguiente
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </>
   )
 }

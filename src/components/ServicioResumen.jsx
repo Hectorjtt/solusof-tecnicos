@@ -61,11 +61,14 @@ function FotoThumb({ foto }) {
   }, [foto.storage_path])
   return (
     <div className="foto-slot has-photo" style={{ cursor: 'default' }}>
-      {url ? (
-        <img src={url} alt={foto.etiqueta} />
-      ) : (
-        <span className="foto-slot-label">{foto.storage_path ? 'Cargando…' : foto.etiqueta}</span>
-      )}
+      <div className="foto-slot-media">
+        {url ? (
+          <img src={url} alt={foto.etiqueta} />
+        ) : (
+          <span className="foto-slot-label">{foto.storage_path ? 'Cargando…' : 'Sin foto'}</span>
+        )}
+      </div>
+      <span className="foto-slot-caption">{foto.etiqueta}</span>
     </div>
   )
 }

@@ -10,4 +10,5 @@ export const FOTOS_FIJAS_CATALOG = [
   { key: 'conexiones', label: 'Fotografía de las conexiones realizadas' },
   { key: 'tablero_armado', label: 'Fotografía de tablero armado' },
   { key: 'entrega_final', label: 'Fotografía de la entrega final' },
+  { key: 'antena_gps', label: 'Fotografía de la antena GPS' },
 ]

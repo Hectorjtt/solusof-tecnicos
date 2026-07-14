@@ -89,9 +89,10 @@ export function ServicioWizardProvider({ servicioId, children }) {
     load()
   }, [load])
 
-  // Realtime scoped a este servicio: refleja cambios hechos desde otra pestaña/dispositivo.
+  // Realtime scoped a este servicio: refleja cambios hechos desde otra pestaña/dispositivo
+  // (ej. admin viendo en vivo mientras el técnico llena el checklist).
   useEffect(() => {
-    const channel = supabase
+    let channel = supabase
       .channel(`servicio-wizard-${servicioId}`)
       .on(
         'postgres_changes',
@@ -108,7 +109,14 @@ export function ServicioWizardProvider({ servicioId, children }) {
         { event: 'UPDATE', schema: 'public', table: 'servicios', filter: `id=eq.${servicioId}` },
         (payload) => setServicio((prev) => (prev ? { ...prev, ...payload.new } : prev)),
       )
-      .subscribe()
+    for (const t of CHILD_TABLES) {
+      channel = channel.on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: t, filter: `servicio_id=eq.${servicioId}` },
+        (payload) => setChildData((d) => ({ ...d, [t]: payload.new ?? {} })),
+      )
+    }
+    channel.subscribe()
     return () => supabase.removeChannel(channel)
   }, [servicioId])
 
@@ -131,27 +139,39 @@ export function ServicioWizardProvider({ servicioId, children }) {
     const timeoutId = setTimeout(() => {
       const runId = ++syncRunId.current
       const wanted = accesorios.filter((a) => a.checked && a.etiqueta && a.etiqueta.trim() !== '')
-      const wantedKeys = new Set(wanted.map((a) => `accesorio:${a.accesorio_key}`))
+      // La mayoría de los accesorios piden 1 foto (slot_key = "accesorio:<key>"),
+      // pero algunos (ej. sensor de puerta) piden varias -- ver "subfotos" en
+      // accesoriosCatalog.js. Cada uno genera su propio slot fijo con etiqueta fija.
+      const wantedSlots = wanted.flatMap((a) => {
+        const catalogo = ACCESORIOS_CATALOG.find((c) => c.key === a.accesorio_key)
+        if (catalogo?.subfotos) {
+          return catalogo.subfotos.map((sf) => ({
+            slotKey: `accesorio:${a.accesorio_key}:${sf.key}`,
+            etiqueta: sf.label,
+          }))
+        }
+        return [{ slotKey: `accesorio:${a.accesorio_key}`, etiqueta: a.etiqueta }]
+      })
+      const wantedKeys = new Set(wantedSlots.map((s) => s.slotKey))
 
       ;(async () => {
-        for (const a of wanted) {
+        for (const { slotKey, etiqueta } of wantedSlots) {
           if (runId !== syncRunId.current) return // una corrida más nueva ya está en curso
-          const slotKey = `accesorio:${a.accesorio_key}`
           const existente = fotosRef.current.find((f) => f.slot_key === slotKey)
           if (!existente) {
             const { data, error } = await supabase
               .from('fotos')
-              .insert({ servicio_id: servicioId, slot_key: slotKey, slot_tipo: 'accesorio', etiqueta: a.etiqueta })
+              .insert({ servicio_id: servicioId, slot_key: slotKey, slot_tipo: 'accesorio', etiqueta })
               .select()
               .single()
             if (error && error.code !== '23505') console.error('[sync fotos] insert falló', error)
             if (data && runId === syncRunId.current) {
               setFotos((prev) => (prev.some((f) => f.id === data.id) ? prev : [...prev, data]))
             }
-          } else if (existente.etiqueta !== a.etiqueta) {
-            await supabase.from('fotos').update({ etiqueta: a.etiqueta }).eq('id', existente.id)
+          } else if (existente.etiqueta !== etiqueta) {
+            await supabase.from('fotos').update({ etiqueta }).eq('id', existente.id)
             if (runId === syncRunId.current) {
-              setFotos((prev) => prev.map((f) => (f.id === existente.id ? { ...f, etiqueta: a.etiqueta } : f)))
+              setFotos((prev) => prev.map((f) => (f.id === existente.id ? { ...f, etiqueta } : f)))
             }
           }
         }

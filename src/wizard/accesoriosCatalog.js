@@ -4,7 +4,16 @@
 export const ACCESORIOS_CATALOG = [
   { key: 'boton_panico', label: 'Botón de pánico' },
   { key: 'relevador_bloqueo', label: 'Relevador / Bloqueo' },
-  { key: 'sensor_puerta', label: 'Sensor de puerta' },
+  {
+    key: 'sensor_puerta',
+    label: 'Sensor de puerta',
+    // Este accesorio pide 3 fotos (no 1): una por cada sensor instalado.
+    subfotos: [
+      { key: 'piloto', label: 'Sensor de puerta piloto' },
+      { key: 'copiloto', label: 'Sensor de puerta copiloto' },
+      { key: 'trasera', label: 'Sensor de puerta trasera' },
+    ],
+  },
   { key: 'sensor_combustible', label: 'Sensor de combustible' },
   { key: 'sensor_temperatura', label: 'Sensor de temperatura' },
   { key: 'microfono', label: 'Micrófono' },
