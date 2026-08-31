@@ -4,17 +4,22 @@
 export const ACCESORIOS_CATALOG = [
   { key: 'boton_panico', label: 'Botón de pánico' },
   { key: 'relevador_bloqueo', label: 'Relevador / Bloqueo' },
+  { key: 'relevador_marcha', label: 'Relevador / Marcha' },
+  { key: 'relevador_buzzer', label: 'Relevador / Buzzer' },
   {
     key: 'sensor_puerta',
     label: 'Sensor de puerta',
-    // Este accesorio pide 3 fotos (no 1): una por cada sensor instalado.
+    // Este accesorio pide 2 fotos (no 1): una por cada sensor instalado.
+    // "Sensor de puerta trasera" es aparte (más abajo): es su propio
+    // accesorio con su propio check, no una subfoto de este.
     subfotos: [
       { key: 'piloto', label: 'Sensor de puerta piloto' },
       { key: 'copiloto', label: 'Sensor de puerta copiloto' },
-      { key: 'trasera', label: 'Sensor de puerta trasera' },
     ],
   },
-  { key: 'sensor_combustible', label: 'Sensor de combustible' },
+  { key: 'sensor_puerta_trasera', label: 'Sensor de puerta trasera' },
+  { key: 'sensor_combustible_tq1', label: 'Sensor de combustible TQ1' },
+  { key: 'sensor_combustible_tq2', label: 'Sensor de combustible TQ2' },
   { key: 'sensor_temperatura', label: 'Sensor de temperatura' },
   { key: 'microfono', label: 'Micrófono' },
   { key: 'bocina', label: 'Bocina' },
@@ -23,7 +28,6 @@ export const ACCESORIOS_CATALOG = [
   { key: 'luces_auxiliares', label: 'Luces auxiliares' },
   { key: 'sensor_5ta_rueda', label: 'Sensor de 5ta rueda' },
   { key: 'sensor_uso_rudo', label: 'Sensor de uso rudo' },
-  { key: 'id_conductor', label: 'ID de conductor' },
   { key: 'otro_1', label: '', esPersonalizado: true },
   { key: 'otro_2', label: '', esPersonalizado: true },
 ]

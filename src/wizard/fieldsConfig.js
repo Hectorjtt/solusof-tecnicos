@@ -121,7 +121,6 @@ export const OTROS_DATOS_GROUPS = [
       { key: 'voltaje_bateria_inicial', label: 'Voltaje de batería inicial', type: 'number', suffix: 'V' },
       { key: 'voltaje_bateria_final', label: 'Voltaje de batería final', type: 'number', suffix: 'V' },
       { key: 'tiempo_instalacion', label: 'Tiempo de instalación', type: 'text' },
-      { key: 'condiciones_climaticas', label: 'Condiciones climáticas', type: 'text' },
     ],
   },
   {
@@ -132,11 +131,30 @@ export const OTROS_DATOS_GROUPS = [
 
 export const CHECKLIST_STEPS = [
   { key: 'recepcion', table: 'recepcion_verificacion', label: 'Recepción y verificación inicial', fields: RECEPCION_FIELDS },
-  { key: 'instalacion', table: 'instalacion_gps', label: 'Instalación del GPS', fields: INSTALACION_FIELDS },
   { key: 'accesorios', table: 'accesorios_instalados', label: 'Accesorios instalados' },
   { key: 'pruebas', table: 'pruebas_funcionamiento', label: 'Pruebas de funcionamiento', fields: PRUEBAS_FIELDS },
+  { key: 'instalacion', table: 'instalacion_gps', label: 'Validación del GPS', fields: INSTALACION_FIELDS },
   { key: 'entrega', table: 'entrega_servicio', label: 'Entrega del servicio', fields: ENTREGA_FIELDS },
   { key: 'otros_datos', table: 'otros_datos', label: 'Otros datos', groups: OTROS_DATOS_GROUPS },
   { key: 'evidencias', label: 'Evidencias fotográficas' },
   { key: 'firma', label: 'Firma digital' },
 ]
+
+// Solo para servicios de tipo "revision": mismo catálogo de accesorios que
+// "Accesorios instalados" (ver accesoriosCatalog.js), pero como un checklist
+// aparte para dejar constancia de qué ya tenía la unidad, y SIN pedir fotos
+// al final (las fotos son solo para lo que el técnico instala hoy).
+const ACCESORIOS_REVISADOS_STEP = { key: 'accesorios_revisados', label: 'Accesorios revisados' }
+
+// El paso "accesorios" se llama distinto según el tipo de servicio: en una
+// desinstalación el técnico está quitando accesorios, no instalándolos.
+export function accesoriosLabel(servicio) {
+  return servicio?.tipo_servicio === 'desinstalacion' ? 'Accesorios desinstalados' : 'Accesorios instalados'
+}
+
+export function getChecklistSteps(servicio) {
+  const steps = CHECKLIST_STEPS.map((s) => (s.key === 'accesorios' ? { ...s, label: accesoriosLabel(servicio) } : s))
+  if (servicio?.tipo_servicio !== 'revision') return steps
+  const idx = steps.findIndex((s) => s.key === 'accesorios')
+  return [...steps.slice(0, idx), ACCESORIOS_REVISADOS_STEP, ...steps.slice(idx)]
+}

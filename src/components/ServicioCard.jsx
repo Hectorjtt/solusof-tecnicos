@@ -1,4 +1,4 @@
-import { STATUS_LABEL, formatFecha } from '../lib/estado'
+import { STATUS_LABEL, TIPO_SERVICIO_LABEL, formatFecha } from '../lib/estado'
 
 export function ServicioCard({ servicio, onClick, esNuevo }) {
   return (
@@ -7,8 +7,13 @@ export function ServicioCard({ servicio, onClick, esNuevo }) {
         <div style={{ minWidth: 0 }}>
           <div className="card-title">{servicio.cliente_nombre}</div>
           <div className="card-sub">
-            {[servicio.marca, servicio.modelo].filter(Boolean).join(' ')}
-            {servicio.placas ? ` · ${servicio.placas}` : ''}
+            {[
+              servicio.tipo_servicio && TIPO_SERVICIO_LABEL[servicio.tipo_servicio],
+              servicio.unidad_razon_social,
+              servicio.placas,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           </div>
         </div>
         <span className={`badge badge-${servicio.status}`}>{STATUS_LABEL[servicio.status]}</span>

@@ -30,10 +30,23 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let active = true
 
+    // getSession() puede quedarse colgada (sin resolver ni fallar) si el
+    // dispositivo acaba de reconectarse a la red y necesita refrescar el
+    // token -- sin este timeout el spinner de carga inicial nunca se quita
+    // y hay que refrescar la página a mano para que funcione.
+    const timeoutId = setTimeout(() => {
+      if (active) setLoading(false)
+    }, 6000)
+
     supabase.auth.getSession().then(async ({ data }) => {
       if (!active) return
       setSession(data.session)
       await loadProfile(data.session?.user?.id)
+      if (active) {
+        clearTimeout(timeoutId)
+        setLoading(false)
+      }
+    }).catch(() => {
       if (active) setLoading(false)
     })
 
@@ -44,6 +57,7 @@ export function AuthProvider({ children }) {
 
     return () => {
       active = false
+      clearTimeout(timeoutId)
       listener.subscription.unsubscribe()
     }
   }, [loadProfile])

@@ -8,6 +8,20 @@ import { aprobarServicio, rechazarServicio, guardarReportePdfPath } from '../../
 import { subirArchivo, reportePdfPath, getSignedUrl } from '../../lib/storage'
 import { STATUS_LABEL } from '../../lib/estado'
 
+// Lista fija de quién puede quedar registrado como aprobador — son personas
+// del negocio, no necesariamente cuentas de esta app (por eso es una lista
+// fija en vez de sacarla de "profiles").
+const APROBADORES = [
+  'Victor Espinosa',
+  'Raul Ornelas',
+  'Carlos Fragoso',
+  'Danae Vergara',
+  'Arnoldo Cuevas',
+  'Aaron Angeles',
+  'Hector Tamez',
+  'Eduardo Estrada',
+]
+
 function descargarBlob(blob, nombre) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -24,6 +38,8 @@ function AdminServicioDetalleInner() {
   const { profile } = useAuth()
   const { id } = useParams()
   const { loading, error: loadError, servicio, reload } = useServicioWizard()
+  const [mostrarAprobacion, setMostrarAprobacion] = useState(false)
+  const [aprobador, setAprobador] = useState('')
   const [mostrarRechazo, setMostrarRechazo] = useState(false)
   const [motivo, setMotivo] = useState('')
   const [procesando, setProcesando] = useState(false)
@@ -40,10 +56,13 @@ function AdminServicioDetalleInner() {
   }
 
   async function aprobar() {
+    if (!aprobador) return
     setError('')
     setProcesando(true)
     try {
-      await aprobarServicio(id, profile.id)
+      await aprobarServicio(id, profile.id, aprobador)
+      setMostrarAprobacion(false)
+      setAprobador('')
       const actualizado = await reload()
       setGenerandoPdf(true)
       try {
@@ -118,6 +137,9 @@ function AdminServicioDetalleInner() {
   // (aprobado o rechazado) -- is_admin() ya se salta esa restricción en RLS.
   const puedeRevisar = servicio.status === 'finalizado'
   const checklistEditable = true
+  // Datos del cliente/vehículo: editables mientras el servicio no esté ya
+  // "aprobado" (en progreso, finalizado o rechazado sí se pueden corregir).
+  const datosEditable = servicio.status !== 'aprobado'
 
   return (
     <div className="app-shell">
@@ -143,6 +165,12 @@ function AdminServicioDetalleInner() {
           </div>
         )}
 
+        {servicio.status === 'aprobado' && servicio.aprobado_por_nombre && (
+          <div className="panel">
+            <strong>Aprobado por:</strong> {servicio.aprobado_por_nombre}
+          </div>
+        )}
+
         {checklistEditable && (
           <div className="panel">
             <p className="text-sm muted" style={{ margin: 0 }}>
@@ -152,23 +180,59 @@ function AdminServicioDetalleInner() {
           </div>
         )}
 
-        <ServicioResumen checklistEditable={checklistEditable} />
+        <ServicioResumen checklistEditable={checklistEditable} datosEditable={datosEditable} fotosEditable={datosEditable} />
 
         {puedeRevisar && (
           <div className="panel">
             <h2>Revisión</h2>
             {error && <p className="field-error">{error}</p>}
             {generandoPdf && <p className="text-sm muted">Generando el PDF del reporte…</p>}
-            {!mostrarRechazo ? (
+            {!mostrarRechazo && !mostrarAprobacion && (
               <div className="row">
-                <button type="button" className="btn btn-ok" onClick={aprobar} disabled={procesando}>
-                  {procesando ? 'Procesando…' : 'Aprobar'}
+                <button type="button" className="btn btn-ok" onClick={() => setMostrarAprobacion(true)} disabled={procesando}>
+                  Aprobar
                 </button>
                 <button type="button" className="btn btn-danger" onClick={() => setMostrarRechazo(true)} disabled={procesando}>
                   Rechazar
                 </button>
               </div>
-            ) : (
+            )}
+            {mostrarAprobacion && (
+              <div>
+                <div className="field">
+                  <label htmlFor="aprobador">¿Quién está aprobando este servicio?</label>
+                  <select id="aprobador" value={aprobador} onChange={(e) => setAprobador(e.target.value)}>
+                    <option value="">Selecciona…</option>
+                    {APROBADORES.map((nombre) => (
+                      <option key={nombre} value={nombre}>
+                        {nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="row">
+                  <button
+                    type="button"
+                    className="btn btn-ok"
+                    onClick={aprobar}
+                    disabled={procesando || !aprobador}
+                  >
+                    {procesando ? 'Procesando…' : 'Confirmar aprobación'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => {
+                      setMostrarAprobacion(false)
+                      setAprobador('')
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+            {mostrarRechazo && (
               <div>
                 <div className="field">
                   <label htmlFor="motivo">Motivo de rechazo</label>

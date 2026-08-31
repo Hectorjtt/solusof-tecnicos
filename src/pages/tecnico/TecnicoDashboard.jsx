@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Topbar } from '../../components/Topbar'
 import { ServicioCard } from '../../components/ServicioCard'
@@ -14,6 +14,7 @@ export default function TecnicoDashboard() {
   const { user } = useAuth()
   const [servicios, setServicios] = useState([])
   const [loading, setLoading] = useState(true)
+  const [busqueda, setBusqueda] = useState('')
 
   const cargar = useCallback(async () => {
     if (!user) return
@@ -29,13 +30,30 @@ export default function TecnicoDashboard() {
   // Nuevo servicio asignado en vivo -> refresca la lista (simple y confiable).
   useOnNuevoServicio(cargar)
 
-  const activos = servicios.filter((s) => ACTIVOS.includes(s.status))
-  const cerrados = servicios.filter((s) => CERRADOS.includes(s.status))
+  const filtrados = useMemo(() => {
+    const q = busqueda.trim().toLowerCase()
+    if (!q) return servicios
+    return servicios.filter((s) =>
+      [s.cliente_nombre, s.unidad_razon_social, s.placas, s.marca, s.modelo]
+        .filter(Boolean)
+        .some((v) => v.toLowerCase().includes(q)),
+    )
+  }, [servicios, busqueda])
+
+  const activos = filtrados.filter((s) => ACTIVOS.includes(s.status))
+  const cerrados = filtrados.filter((s) => CERRADOS.includes(s.status))
 
   return (
     <div className="app-shell">
       <Topbar title="Mis servicios" />
       <div className="container">
+        <input
+          type="text"
+          placeholder="Buscar por cliente, unidad/económico, placas…"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          style={{ minHeight: 44, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 6, width: '100%', marginBottom: 14, boxSizing: 'border-box' }}
+        />
         {loading ? (
           <div className="center-screen">
             <div className="spinner" />
@@ -45,7 +63,11 @@ export default function TecnicoDashboard() {
             <h2 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.04em' }}>
               Activos
             </h2>
-            {activos.length === 0 && <div className="empty-state">No tienes servicios pendientes.</div>}
+            {activos.length === 0 && (
+              <div className="empty-state">
+                {busqueda.trim() ? 'Sin resultados para tu búsqueda.' : 'No tienes servicios pendientes.'}
+              </div>
+            )}
             <div className="stack">
               {activos.map((s) => (
                 <ServicioCard

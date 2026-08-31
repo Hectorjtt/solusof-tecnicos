@@ -10,6 +10,7 @@ const SERVICIO_COMPLETO_SELECT = `
   entrega_servicio ( * ),
   otros_datos ( * ),
   accesorios_instalados ( * ),
+  accesorios_revisados ( * ),
   fotos ( * )
 `
 
@@ -49,6 +50,21 @@ export async function crearServicio(payload) {
   const { data, error } = await supabase.from('servicios').insert(payload).select().single()
   if (error) throw error
   return data
+}
+
+// Avisa a SolusofOscuro (OS, repo Firebase aparte) que se creó este servicio,
+// para que aparezca ahí como pendiente por aprobar. No debe tronar el flujo
+// de creación si falla (red, OS caído, etc.) -- el servicio en Técnicos ya
+// quedó bien guardado sin importar esto.
+export async function sincronizarServicioConOS(servicioId) {
+  try {
+    const { error } = await supabase.functions.invoke('sync-servicio-a-os', {
+      body: { servicioId },
+    })
+    if (error) throw error
+  } catch (err) {
+    console.error('No se pudo sincronizar el servicio con OS:', err)
+  }
 }
 
 export async function listServicios({ status } = {}) {
@@ -114,7 +130,7 @@ export async function finalizarServicio(id, { tecnico, cliente }) {
   return data
 }
 
-export async function aprobarServicio(id, revisorId) {
+export async function aprobarServicio(id, revisorId, aprobadoPorNombre) {
   const { data, error } = await supabase
     .from('servicios')
     .update({
@@ -122,6 +138,7 @@ export async function aprobarServicio(id, revisorId) {
       revisado_por: revisorId,
       revisado_en: new Date().toISOString(),
       motivo_rechazo: null,
+      aprobado_por_nombre: aprobadoPorNombre,
     })
     .eq('id', id)
     .select()

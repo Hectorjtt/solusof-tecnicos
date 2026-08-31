@@ -30,6 +30,7 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
   const [servicio, setServicio] = useState(null)
   const [childData, setChildData] = useState({})
   const [accesorios, setAccesorios] = useState([])
+  const [accesoriosRevisados, setAccesoriosRevisados] = useState([])
   const [fotos, setFotos] = useState([])
   const timers = useRef({})
   const fotosRef = useRef(fotos)
@@ -45,11 +46,13 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
     const nextChild = {}
     for (const t of CHILD_TABLES) nextChild[t] = full[t] ?? {}
     setChildData(nextChild)
-    const [accRes, fotoRes] = await Promise.all([
+    const [accRes, accRevRes, fotoRes] = await Promise.all([
       supabase.from('accesorios_instalados').select('*').eq('servicio_id', servicioId).order('updated_at'),
+      supabase.from('accesorios_revisados').select('*').eq('servicio_id', servicioId).order('updated_at'),
       supabase.from('fotos').select('*').eq('servicio_id', servicioId),
     ])
     setAccesorios(accRes.data ?? [])
+    setAccesoriosRevisados(accRevRes.data ?? [])
     setFotos(fotoRes.data ?? [])
     return full
   }, [servicioId])
@@ -59,15 +62,22 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
     setError(null)
     try {
       // Semilla idempotente: garantiza que existan las filas de catálogo sin pisar las ya guardadas.
-      await supabase.from('accesorios_instalados').upsert(
+      // Se siembra igual para todos los servicios (aunque "accesorios_revisados"
+      // solo se muestre en los de tipo "revision") - más simple que detectar el
+      // tipo antes de sembrar, y las filas de sobra en otros tipos no estorban.
+      const seedAccesorios = () =>
         ACCESORIOS_CATALOG.map((a) => ({
           servicio_id: servicioId,
           accesorio_key: a.key,
           etiqueta: a.esPersonalizado ? '' : a.label,
           es_personalizado: !!a.esPersonalizado,
-        })),
-        { onConflict: 'servicio_id,accesorio_key', ignoreDuplicates: true },
-      )
+        }))
+      await supabase
+        .from('accesorios_instalados')
+        .upsert(seedAccesorios(), { onConflict: 'servicio_id,accesorio_key', ignoreDuplicates: true })
+      await supabase
+        .from('accesorios_revisados')
+        .upsert(seedAccesorios(), { onConflict: 'servicio_id,accesorio_key', ignoreDuplicates: true })
       await supabase.from('fotos').upsert(
         FOTOS_FIJAS_CATALOG.map((f) => ({
           servicio_id: servicioId,
@@ -111,6 +121,11 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'accesorios_instalados', filter: `servicio_id=eq.${servicioId}` },
         (payload) => setAccesorios((prev) => mergeRow(prev, payload)),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'accesorios_revisados', filter: `servicio_id=eq.${servicioId}` },
+        (payload) => setAccesoriosRevisados((prev) => mergeRow(prev, payload)),
       )
       .on(
         'postgres_changes',
@@ -270,6 +285,113 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
     [servicioId],
   )
 
+  // "Accesorios revisados" (solo servicios tipo "revision") - mismo patrón que
+  // toggleAccesorio/setAccesorioEtiqueta/agregarOtroAccesorio de arriba, pero
+  // contra la tabla accesorios_revisados. Sin sincronía de fotos: ese paso
+  // nunca pide evidencia fotográfica.
+  const toggleAccesorioRevisado = useCallback(
+    (accesorioKey, checked) => {
+      setAccesoriosRevisados((prev) =>
+        prev.map((a) => (a.accesorio_key === accesorioKey ? { ...a, checked } : a)),
+      )
+      supabase
+        .from('accesorios_revisados')
+        .update({ checked })
+        .eq('servicio_id', servicioId)
+        .eq('accesorio_key', accesorioKey)
+        .then(({ error }) => {
+          if (error) console.error('[toggleAccesorioRevisado] no se pudo guardar', accesorioKey, error)
+        })
+    },
+    [servicioId],
+  )
+
+  const setAccesorioRevisadoEtiqueta = useCallback(
+    (accesorioKey, etiqueta) => {
+      setAccesoriosRevisados((prev) =>
+        prev.map((a) => (a.accesorio_key === accesorioKey ? { ...a, etiqueta } : a)),
+      )
+      const timerKey = `accRev:${accesorioKey}`
+      clearTimeout(timers.current[timerKey])
+      timers.current[timerKey] = setTimeout(() => {
+        supabase
+          .from('accesorios_revisados')
+          .update({ etiqueta })
+          .eq('servicio_id', servicioId)
+          .eq('accesorio_key', accesorioKey)
+          .then(({ error }) => {
+            if (error) console.error('[setAccesorioRevisadoEtiqueta] no se pudo guardar', accesorioKey, error)
+          })
+      }, 550)
+    },
+    [servicioId],
+  )
+
+  const agregarOtroAccesorioRevisado = useCallback(async () => {
+    const numerosUsados = accesoriosRevisados
+      .map((a) => /^otro_(\d+)$/.exec(a.accesorio_key)?.[1])
+      .filter(Boolean)
+      .map(Number)
+    const siguiente = numerosUsados.length ? Math.max(...numerosUsados) + 1 : 1
+    const accesorioKey = `otro_${siguiente}`
+    const { data, error } = await supabase
+      .from('accesorios_revisados')
+      .insert({ servicio_id: servicioId, accesorio_key: accesorioKey, etiqueta: '', es_personalizado: true })
+      .select()
+      .single()
+    if (error) {
+      console.error('[agregarOtroAccesorioRevisado] no se pudo agregar', error)
+      return
+    }
+    setAccesoriosRevisados((prev) => [...prev, data])
+  }, [accesoriosRevisados, servicioId])
+
+  // A diferencia de updateField (tablas hijas, upsert por servicio_id), esto
+  // actualiza directo una columna de "servicios" (datos del cliente / vehículo,
+  // que viven en la fila principal, no en una tabla hija).
+  const updateServicioField = useCallback(
+    (key, value, { immediate = false } = {}) => {
+      setServicio((prev) => (prev ? { ...prev, [key]: value } : prev))
+      const timerKey = `servicios:${key}`
+      clearTimeout(timers.current[timerKey])
+      timers.current[timerKey] = setTimeout(
+        () => {
+          supabase
+            .from('servicios')
+            .update({ [key]: value })
+            .eq('id', servicioId)
+            .then(({ error }) => {
+              if (error) console.error('[updateServicioField] no se pudo guardar', key, error)
+            })
+        },
+        immediate ? 0 : 550,
+      )
+    },
+    [servicioId],
+  )
+
+  // Agrega un "Otro" adicional más allá de los que ya trae el catálogo fijo
+  // (otro_1, otro_2) — genera la siguiente key libre (otro_3, otro_4, ...) para
+  // no chocar con la unique(servicio_id, accesorio_key).
+  const agregarOtroAccesorio = useCallback(async () => {
+    const numerosUsados = accesorios
+      .map((a) => /^otro_(\d+)$/.exec(a.accesorio_key)?.[1])
+      .filter(Boolean)
+      .map(Number)
+    const siguiente = numerosUsados.length ? Math.max(...numerosUsados) + 1 : 1
+    const accesorioKey = `otro_${siguiente}`
+    const { data, error } = await supabase
+      .from('accesorios_instalados')
+      .insert({ servicio_id: servicioId, accesorio_key: accesorioKey, etiqueta: '', es_personalizado: true })
+      .select()
+      .single()
+    if (error) {
+      console.error('[agregarOtroAccesorio] no se pudo agregar', error)
+      return
+    }
+    setAccesorios((prev) => [...prev, data])
+  }, [accesorios, servicioId])
+
   const updateFotoLocal = useCallback((fotoRow) => {
     setFotos((prev) => prev.map((f) => (f.id === fotoRow.id ? fotoRow : f)))
   }, [])
@@ -285,15 +407,40 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
       servicio,
       childData,
       accesorios,
+      accesoriosRevisados,
       fotos,
       updateField,
       toggleAccesorio,
       setAccesorioEtiqueta,
+      agregarOtroAccesorio,
+      toggleAccesorioRevisado,
+      setAccesorioRevisadoEtiqueta,
+      agregarOtroAccesorioRevisado,
+      updateServicioField,
       updateFotoLocal,
       patchServicioLocal,
       reload: load,
     }),
-    [loading, error, servicio, childData, accesorios, fotos, updateField, toggleAccesorio, setAccesorioEtiqueta, updateFotoLocal, patchServicioLocal, load],
+    [
+      loading,
+      error,
+      servicio,
+      childData,
+      accesorios,
+      accesoriosRevisados,
+      fotos,
+      updateField,
+      toggleAccesorio,
+      setAccesorioEtiqueta,
+      agregarOtroAccesorio,
+      toggleAccesorioRevisado,
+      setAccesorioRevisadoEtiqueta,
+      agregarOtroAccesorioRevisado,
+      updateServicioField,
+      updateFotoLocal,
+      patchServicioLocal,
+      load,
+    ],
   )
 
   return <WizardContext.Provider value={value}>{children}</WizardContext.Provider>

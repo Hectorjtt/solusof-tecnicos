@@ -1,6 +1,7 @@
 import { FotoSlot } from '../../components/FotoSlot'
 import { FOTOS_FIJAS_CATALOG } from '../fotosFijasCatalog'
 import { ACCESORIOS_CATALOG } from '../accesoriosCatalog'
+import { accesoriosLabel } from '../fieldsConfig'
 import { useServicioWizard } from '../ServicioWizardContext'
 
 function ordenSlots(fotos) {
@@ -19,15 +20,15 @@ function ordenSlots(fotos) {
 }
 
 export function EvidenciasStep({ servicioId }) {
-  const { fotos } = useServicioWizard()
+  const { servicio, fotos } = useServicioWizard()
   const ordenadas = ordenSlots(fotos)
 
   return (
     <div className="panel">
       <p className="text-sm muted" style={{ marginTop: 0 }}>
         Todas estas fotos son obligatorias para poder finalizar el servicio.
-        Las de accesorios aparecen según lo que marcaste en el paso
-        "Accesorios instalados" — si falta una, regresa a ese paso y márcalo.
+        Las de accesorios aparecen según lo que marcaste en el paso "
+        {accesoriosLabel(servicio)}" — si falta una, regresa a ese paso y márcalo.
       </p>
       <div className="foto-grid">
         {ordenadas.map((foto) => (

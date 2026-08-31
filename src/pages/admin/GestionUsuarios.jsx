@@ -13,6 +13,8 @@ export default function GestionUsuarios() {
   const [creando, setCreando] = useState(false)
   const [error, setError] = useState('')
   const [ok, setOk] = useState('')
+  const [editandoId, setEditandoId] = useState(null)
+  const [nombreEditado, setNombreEditado] = useState('')
 
   async function cargar() {
     setLoading(true)
@@ -52,6 +54,27 @@ export default function GestionUsuarios() {
 
   async function toggleActivo(usuario) {
     await supabase.from('profiles').update({ activo: !usuario.activo }).eq('id', usuario.id)
+    cargar()
+  }
+
+  function iniciarEdicionNombre(usuario) {
+    setEditandoId(usuario.id)
+    setNombreEditado(usuario.nombre)
+  }
+
+  function cancelarEdicionNombre() {
+    setEditandoId(null)
+    setNombreEditado('')
+  }
+
+  async function guardarNombre(usuario) {
+    const nombre = nombreEditado.trim()
+    if (!nombre || nombre === usuario.nombre) {
+      cancelarEdicionNombre()
+      return
+    }
+    await supabase.from('profiles').update({ nombre }).eq('id', usuario.id)
+    cancelarEdicionNombre()
     cargar()
   }
 
@@ -115,20 +138,45 @@ export default function GestionUsuarios() {
           {loading ? (
             <div className="spinner" />
           ) : (
-            usuarios.map((u) => (
-              <div key={u.id} className="row-between" style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                <div>
-                  <strong>{u.nombre}</strong>{' '}
-                  <span className="muted text-sm">
-                    · {u.role === 'admin' ? 'Admin' : 'Técnico'}
-                    {u.telefono ? ` · ${u.telefono}` : ''}
-                  </span>
+            usuarios.map((u) =>
+              editandoId === u.id ? (
+                <div key={u.id} className="row-between" style={{ padding: '10px 0', borderBottom: '1px solid var(--border)', gap: 8 }}>
+                  <input
+                    type="text"
+                    value={nombreEditado}
+                    onChange={(e) => setNombreEditado(e.target.value)}
+                    autoFocus
+                    style={{ flex: 1 }}
+                  />
+                  <div className="row" style={{ gap: 6, flexShrink: 0 }}>
+                    <button type="button" className="btn btn-primary" onClick={() => guardarNombre(u)}>
+                      Guardar
+                    </button>
+                    <button type="button" className="btn btn-ghost" onClick={cancelarEdicionNombre}>
+                      Cancelar
+                    </button>
+                  </div>
                 </div>
-                <button type="button" className="btn btn-ghost" onClick={() => toggleActivo(u)}>
-                  {u.activo ? 'Desactivar' : 'Activar'}
-                </button>
-              </div>
-            ))
+              ) : (
+                <div key={u.id} className="row-between" style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div>
+                    <strong>{u.nombre}</strong>{' '}
+                    <span className="muted text-sm">
+                      · {u.role === 'admin' ? 'Admin' : 'Técnico'}
+                      {u.telefono ? ` · ${u.telefono}` : ''}
+                    </span>
+                  </div>
+                  <div className="row" style={{ gap: 6, flexShrink: 0 }}>
+                    <button type="button" className="btn btn-ghost" onClick={() => iniciarEdicionNombre(u)}>
+                      Editar nombre
+                    </button>
+                    <button type="button" className="btn btn-ghost" onClick={() => toggleActivo(u)}>
+                      {u.activo ? 'Desactivar' : 'Activar'}
+                    </button>
+                  </div>
+                </div>
+              ),
+            )
           )}
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf'
 import { getSignedUrl } from './storage'
-import { CHECKLIST_STEPS, OTROS_DATOS_GROUPS } from '../wizard/fieldsConfig'
+import { CHECKLIST_STEPS, OTROS_DATOS_GROUPS, accesoriosLabel } from '../wizard/fieldsConfig'
 import { FOTOS_FIJAS_CATALOG } from '../wizard/fotosFijasCatalog'
 import { TIPO_SERVICIO_LABEL, TIPO_SERVICIO_TITULO, formatFecha } from './estado'
 
@@ -287,7 +287,7 @@ async function dibujarPortada(r, servicio) {
   const tipoUnidad =
     servicio.tipo_unidad === 'otra' ? servicio.tipo_unidad_otra || 'Otra' : TIPO_UNIDAD_LABEL[servicio.tipo_unidad]
   r.filasDatos([
-    ['Unidad / Razón social', servicio.unidad_razon_social],
+    ['Unidad/Económico', servicio.unidad_razon_social],
     ['Marca', servicio.marca],
     ['Modelo', servicio.modelo],
     ['Año', servicio.anio],
@@ -295,36 +295,19 @@ async function dibujarPortada(r, servicio) {
     ['Color', servicio.color],
     ['VIN / Serie', servicio.vin_serie],
     ['Tipo de unidad', tipoUnidad],
-    ['Kilometraje', servicio.kilometraje],
     ['IMEI del GPS', servicio.imei_gps],
-    ['No. de serie del GPS', servicio.gps_serie],
-    ['Tipo de GPS', servicio.gps_tipo],
   ])
 }
 
-function dibujarChecklist(r, servicio) {
-  r.sectionTitle('Checklist de instalación de GPS')
-
-  for (const step of CHECKLIST_STEPS.filter((s) => s.fields)) {
-    r.ensureSpace(10)
-    r.doc.setFont('helvetica', 'bold')
-    r.doc.setFontSize(9.5)
-    r.doc.setTextColor(...NAVY_DARK)
-    r.doc.text(step.label, MARGIN, r.y)
-    r.y += 5.5
-    r.checklistItems(step.fields, servicio[step.table] ?? {})
-  }
-
-  // Accesorios instalados
+function dibujarListaAccesorios(r, titulo, marcados, mensajeVacio) {
   r.ensureSpace(10)
   r.doc.setFont('helvetica', 'bold')
   r.doc.setFontSize(9.5)
   r.doc.setTextColor(...NAVY_DARK)
-  r.doc.text('Accesorios instalados', MARGIN, r.y)
+  r.doc.text(titulo, MARGIN, r.y)
   r.y += 5.5
-  const marcados = (servicio.accesorios_instalados ?? []).filter((a) => a.checked)
   if (marcados.length === 0) {
-    r.parrafo('Ningún accesorio adicional instalado.', { color: MUTED, marginBottom: 2 })
+    r.parrafo(mensajeVacio, { color: MUTED, marginBottom: 2 })
   } else {
     for (const a of marcados) {
       r.ensureSpace(5.2)
@@ -343,6 +326,36 @@ function dibujarChecklist(r, servicio) {
     }
   }
   r.y += 2
+}
+
+function dibujarChecklist(r, servicio) {
+  r.sectionTitle('Checklist de instalación de GPS')
+
+  for (const step of CHECKLIST_STEPS.filter((s) => s.fields)) {
+    r.ensureSpace(10)
+    r.doc.setFont('helvetica', 'bold')
+    r.doc.setFontSize(9.5)
+    r.doc.setTextColor(...NAVY_DARK)
+    r.doc.text(step.label, MARGIN, r.y)
+    r.y += 5.5
+    r.checklistItems(step.fields, servicio[step.table] ?? {})
+  }
+
+  if (servicio.tipo_servicio === 'revision') {
+    dibujarListaAccesorios(
+      r,
+      'Accesorios revisados',
+      (servicio.accesorios_revisados ?? []).filter((a) => a.checked),
+      'Ningún accesorio revisado.',
+    )
+  }
+
+  dibujarListaAccesorios(
+    r,
+    accesoriosLabel(servicio),
+    (servicio.accesorios_instalados ?? []).filter((a) => a.checked),
+    'Ningún accesorio adicional instalado.',
+  )
 
   // Material utilizado + Otros datos + Anomalías
   const otros = servicio.otros_datos ?? {}
@@ -498,7 +511,8 @@ async function dibujarFirma(r, servicio) {
     r.doc.setFont('helvetica', 'bold')
     r.doc.setFontSize(9)
     r.doc.setTextColor(...OK)
-    r.doc.text(`Servicio aprobado el ${formatFecha(servicio.revisado_en)}`, MARGIN, r.y)
+    const aprobadoPor = servicio.aprobado_por_nombre ? ` por ${servicio.aprobado_por_nombre}` : ''
+    r.doc.text(`Servicio aprobado el ${formatFecha(servicio.revisado_en)}${aprobadoPor}`, MARGIN, r.y)
     r.y += 6
   }
 }

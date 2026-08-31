@@ -41,11 +41,15 @@ function TarjetaIniciar({ servicio, onIniciado }) {
         <p>
           {servicio.marca} {servicio.modelo} {servicio.anio && `(${servicio.anio})`}
           <br />
+          Unidad/Económico: {servicio.unidad_razon_social || '—'}
+          <br />
           Placas: {servicio.placas || '—'}
           <br />
           VIN/Serie: {servicio.vin_serie || '—'}
           <br />
           IMEI del GPS: {servicio.imei_gps || '—'}
+          <br />
+          Modelo GPS: {servicio.gps_tipo || '—'}
         </p>
       </div>
       {error && <p className="field-error">{error}</p>}
@@ -107,7 +111,10 @@ function ServicioWizardInner() {
               <strong>Motivo de rechazo:</strong> {servicio.motivo_rechazo}
             </div>
           )}
-          <ServicioResumen fotosEditable={servicio.status === 'finalizado'} />
+          {/* El técnico ya no puede tocar las fotos una vez finalizado — solo
+              el admin puede corregirlas (cargar de galería o quitarlas) antes
+              de aprobar, ver AdminServicioDetalle.jsx. */}
+          <ServicioResumen />
           <button
             type="button"
             className="btn btn-block"
