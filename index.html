@@ -6,6 +6,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#123a6b" />
     <title>Solusof Técnicos</title>
+    <script>
+      // Si la app no llega a montar (por ejemplo, la carga inicial se queda
+      // colgada tras un rato sin usarse) se fuerza un único refresh en vez de
+      // dejar la pantalla en blanco para siempre. Corre fuera del bundle de
+      // React para que funcione incluso si ese script nunca llega a cargar.
+      (function () {
+        var FLAG = 'solusof_watchdog_reload'
+        if (sessionStorage.getItem(FLAG)) return
+        setTimeout(function () {
+          if (!window.__solusofAppMounted) {
+            sessionStorage.setItem(FLAG, '1')
+            location.reload()
+          }
+        }, 8000)
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

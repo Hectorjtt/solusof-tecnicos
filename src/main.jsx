@@ -8,3 +8,7 @@ createRoot(document.getElementById('root')).render(
     <App />
   </StrictMode>,
 )
+
+// Avisa al watchdog de index.html que el bundle sí llegó a ejecutarse y
+// React sí montó algo, para que no fuerce un refresh innecesario.
+window.__solusofAppMounted = true

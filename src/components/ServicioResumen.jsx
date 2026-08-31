@@ -4,7 +4,7 @@ import { FotoSlot } from './FotoSlot'
 import { CHECKLIST_STEPS, OTROS_DATOS_GROUPS, accesoriosLabel } from '../wizard/fieldsConfig'
 import { getSignedUrl } from '../lib/storage'
 import { listTecnicos } from '../lib/servicios'
-import { TIPO_SERVICIO_LABEL, TIPO_PAQUETE_LABEL, TIPOS_PAQUETE, MODELOS_GPS } from '../lib/estado'
+import { TIPO_SERVICIO_LABEL, TIPO_PAQUETE_LABEL, TIPOS_PAQUETE, MODELOS_GPS, CAUSAS_REV, CAUSAS_DES } from '../lib/estado'
 import { useServicioWizard } from '../wizard/ServicioWizardContext'
 import { GenericChecklistStep } from '../wizard/steps/GenericChecklistStep'
 import { AccesoriosStep } from '../wizard/steps/AccesoriosStep'
@@ -275,6 +275,24 @@ export function ServicioResumen({ checklistEditable = false, fotosEditable = fal
             onChangeTipo={campoServicio('tipo_paquete')}
             onChangeOtro={campoServicio('tipo_paquete_otro')}
           />
+          {(servicio.tipo_servicio === 'revision' || servicio.tipo_servicio === 'reinstalacion') && (
+            <DatoSelect
+              label="Causa Rev"
+              value={servicio.causa_rev}
+              options={CAUSAS_REV}
+              editable={datosEditable}
+              onChange={campoServicio('causa_rev')}
+            />
+          )}
+          {servicio.tipo_servicio === 'desinstalacion' && (
+            <DatoSelect
+              label="Causa Des"
+              value={servicio.causa_des}
+              options={CAUSAS_DES}
+              editable={datosEditable}
+              onChange={campoServicio('causa_des')}
+            />
+          )}
         </div>
       )}
 

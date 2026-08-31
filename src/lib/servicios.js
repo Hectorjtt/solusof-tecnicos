@@ -67,6 +67,20 @@ export async function sincronizarServicioConOS(servicioId) {
   }
 }
 
+// Avisa a OS que se aprobó el servicio, para llenar allá "Usuario Elaboró
+// Reporte" y "SOP Atendió" con el nombre de quien aprobó. Igual que arriba,
+// no debe tronar el flujo de aprobación si falla.
+export async function sincronizarAprobacionConOS(servicioId) {
+  try {
+    const { error } = await supabase.functions.invoke('sync-aprobacion-a-os', {
+      body: { servicioId },
+    })
+    if (error) throw error
+  } catch (err) {
+    console.error('No se pudo sincronizar la aprobación con OS:', err)
+  }
+}
+
 export async function listServicios({ status } = {}) {
   let query = supabase
     .from('servicios')

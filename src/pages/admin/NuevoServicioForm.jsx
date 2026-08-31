@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Topbar } from '../../components/Topbar'
 import { useAuth } from '../../auth/AuthContext'
 import { crearServicio, listTecnicos, sincronizarServicioConOS } from '../../lib/servicios'
-import { MODELOS_GPS, TIPOS_PAQUETE } from '../../lib/estado'
+import { MODELOS_GPS, TIPOS_PAQUETE, CAUSAS_REV, CAUSAS_DES } from '../../lib/estado'
 
 const TIPOS_UNIDAD = [
   { value: 'particular', label: 'Particular' },
@@ -24,6 +24,8 @@ const initialForm = {
   tipo_servicio: '',
   tipo_paquete: '',
   tipo_paquete_otro: '',
+  causa_rev: '',
+  causa_des: '',
   cliente_nombre: '',
   cliente_telefono: '',
   cliente_correo: '',
@@ -141,6 +143,34 @@ export default function NuevoServicioForm() {
               />
             )}
           </div>
+
+          {(form.tipo_servicio === 'revision' || form.tipo_servicio === 'reinstalacion') && (
+            <div className="field">
+              <label htmlFor="causa_rev">Causa Rev</label>
+              <select id="causa_rev" value={form.causa_rev} onChange={set('causa_rev')}>
+                <option value="">Selecciona…</option>
+                {CAUSAS_REV.map((causa) => (
+                  <option key={causa} value={causa}>
+                    {causa}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {form.tipo_servicio === 'desinstalacion' && (
+            <div className="field">
+              <label htmlFor="causa_des">Causa Des</label>
+              <select id="causa_des" value={form.causa_des} onChange={set('causa_des')}>
+                <option value="">Selecciona…</option>
+                {CAUSAS_DES.map((causa) => (
+                  <option key={causa} value={causa}>
+                    {causa}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="panel">

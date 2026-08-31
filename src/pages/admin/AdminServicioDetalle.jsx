@@ -4,7 +4,7 @@ import { Topbar } from '../../components/Topbar'
 import { ServicioResumen } from '../../components/ServicioResumen'
 import { useAuth } from '../../auth/AuthContext'
 import { ServicioWizardProvider, useServicioWizard } from '../../wizard/ServicioWizardContext'
-import { aprobarServicio, rechazarServicio, guardarReportePdfPath } from '../../lib/servicios'
+import { aprobarServicio, rechazarServicio, guardarReportePdfPath, sincronizarAprobacionConOS } from '../../lib/servicios'
 import { subirArchivo, reportePdfPath, getSignedUrl } from '../../lib/storage'
 import { STATUS_LABEL } from '../../lib/estado'
 
@@ -20,7 +20,17 @@ const APROBADORES = [
   'Aaron Angeles',
   'Hector Tamez',
   'Eduardo Estrada',
+  'Enrique Hernandez',
+  'Adan Cruzado',
+  'Adrian Zarrabal',
 ]
+
+// Únicos que pueden seguir editando un servicio ya "aprobado" (para todos los
+// demás, aprobado queda cerrado -- ver datosEditable más abajo).
+const PUEDEN_EDITAR_APROBADOS = ['hector tamez', 'raul ornelas']
+function puedeEditarAprobados(nombre) {
+  return PUEDEN_EDITAR_APROBADOS.includes((nombre || '').trim().toLowerCase())
+}
 
 function descargarBlob(blob, nombre) {
   const url = URL.createObjectURL(blob)
@@ -61,6 +71,7 @@ function AdminServicioDetalleInner() {
     setProcesando(true)
     try {
       await aprobarServicio(id, profile.id, aprobador)
+      sincronizarAprobacionConOS(id)
       setMostrarAprobacion(false)
       setAprobador('')
       const actualizado = await reload()
@@ -85,7 +96,11 @@ function AdminServicioDetalleInner() {
     setError('')
     setGenerandoPdf(true)
     try {
-      if (servicio.reporte_pdf_storage_path) {
+      // Hector Tamez / Raul Ornelas pueden editar un servicio ya aprobado --
+      // para que "Descargar PDF" refleje esos cambios, se regenera siempre
+      // en vez de servir el PDF cacheado de cuando se aprobó originalmente.
+      const puedeEditar = puedeEditarAprobados(profile?.nombre)
+      if (servicio.reporte_pdf_storage_path && !puedeEditar) {
         const url = await getSignedUrl(servicio.reporte_pdf_storage_path)
         window.open(url, '_blank')
       } else {
@@ -138,8 +153,11 @@ function AdminServicioDetalleInner() {
   const puedeRevisar = servicio.status === 'finalizado'
   const checklistEditable = true
   // Datos del cliente/vehículo: editables mientras el servicio no esté ya
-  // "aprobado" (en progreso, finalizado o rechazado sí se pueden corregir).
-  const datosEditable = servicio.status !== 'aprobado'
+  // "aprobado" (en progreso, finalizado o rechazado sí se pueden corregir) --
+  // salvo Hector Tamez / Raul Ornelas, que pueden seguir editando aunque ya
+  // esté aprobado.
+  const esEditorPrivilegiado = puedeEditarAprobados(profile?.nombre)
+  const datosEditable = servicio.status !== 'aprobado' || esEditorPrivilegiado
 
   return (
     <div className="app-shell">
