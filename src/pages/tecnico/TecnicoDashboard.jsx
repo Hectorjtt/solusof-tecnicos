@@ -18,9 +18,15 @@ export default function TecnicoDashboard() {
 
   const cargar = useCallback(async () => {
     if (!user) return
-    const data = await listMisServicios(user.id)
-    setServicios(data)
-    setLoading(false)
+    try {
+      const data = await listMisServicios(user.id)
+      setServicios(data)
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('No se pudieron cargar los servicios:', e.message ?? e)
+    } finally {
+      setLoading(false)
+    }
   }, [user])
 
   useEffect(() => {
