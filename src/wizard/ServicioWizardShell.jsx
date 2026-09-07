@@ -5,6 +5,7 @@ import { useServicioWizard } from './ServicioWizardContext'
 import { GenericChecklistStep } from './steps/GenericChecklistStep'
 import { AccesoriosStep } from './steps/AccesoriosStep'
 import { AccesoriosRevisadosStep } from './steps/AccesoriosRevisadosStep'
+import { AccesoriosDesinstaladosStep } from './steps/AccesoriosDesinstaladosStep'
 import { OtrosDatosStep } from './steps/OtrosDatosStep'
 import { EvidenciasStep } from './steps/EvidenciasStep'
 import { FirmaStep } from './steps/FirmaStep'
@@ -16,6 +17,16 @@ import { FirmaStep } from './steps/FirmaStep'
 function DatosIniciales({ servicio }) {
   return (
     <>
+      {servicio.fecha_programada && (
+        <div className="panel">
+          <h2>Día y hora del servicio</h2>
+          <p>
+            <strong>
+              {new Date(servicio.fecha_programada).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' })}
+            </strong>
+          </p>
+        </div>
+      )}
       <div className="panel">
         <h2>Datos del cliente</h2>
         <p>
@@ -39,6 +50,12 @@ function DatosIniciales({ servicio }) {
           <br />
           IMEI del GPS: {servicio.imei_gps || '—'}
           <br />
+          {servicio.tipo_servicio === 'desinstalacion_instalacion' && (
+            <>
+              IMEI a desinstalar: {servicio.imei_gps_desinstalacion || '—'}
+              <br />
+            </>
+          )}
           Modelo GPS: {servicio.gps_tipo || '—'}
         </p>
       </div>
@@ -52,6 +69,8 @@ function renderStep(step, servicioId) {
       return <AccesoriosStep />
     case 'accesorios_revisados':
       return <AccesoriosRevisadosStep />
+    case 'accesorios_desinstalados':
+      return <AccesoriosDesinstaladosStep />
     case 'otros_datos':
       return <OtrosDatosStep />
     case 'evidencias':

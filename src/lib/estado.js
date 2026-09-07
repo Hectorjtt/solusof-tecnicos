@@ -13,6 +13,7 @@ export const TIPO_SERVICIO_LABEL = {
   revision: 'Revisión',
   reinstalacion: 'Reinstalación',
   desinstalacion: 'Desinstalación',
+  desinstalacion_instalacion: 'Desinstalación e Instalación',
 }
 
 export const TIPO_SERVICIO_TITULO = {
@@ -20,6 +21,7 @@ export const TIPO_SERVICIO_TITULO = {
   revision: 'Reporte de revisión',
   reinstalacion: 'Reporte de reinstalación',
   desinstalacion: 'Reporte de desinstalación',
+  desinstalacion_instalacion: 'Reporte de desinstalación e instalación',
 }
 
 // Aplica a "revision" Y "reinstalacion" (en OS/Servicios.html ambos
@@ -86,4 +88,12 @@ export const MODELOS_GPS = [
 export function formatFecha(iso) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+// Clave por día en hora LOCAL (no UTC) -- comparar por string evita líos de
+// zona horaria al agrupar servicios de un mismo día calendario (Agenda,
+// AdminDashboard).
+export function dayKey(date) {
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }

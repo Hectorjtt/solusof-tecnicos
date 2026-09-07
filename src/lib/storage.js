@@ -42,3 +42,15 @@ export async function getSignedUrl(path) {
   urlCache.set(path, { url: data.signedUrl, expiresAt: Date.now() + 55 * 60 * 1000 })
   return data.signedUrl
 }
+
+// A diferencia de getSignedUrl (para mostrar la imagen en <img>), esta lleva
+// la opción "download" de Supabase Storage -- agrega el header
+// Content-Disposition: attachment, así el navegador la descarga en vez de
+// solo abrirla. No se cachea (no vale la pena, se pide solo al dar clic en
+// "Descargar").
+export async function getSignedDownloadUrl(path, filename) {
+  if (!path) return null
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 3600, { download: filename || true })
+  if (error) return null
+  return data.signedUrl
+}

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { getServicioCompleto } from '../lib/servicios'
+import { getServicioCompleto, sincronizarServicioConOS } from '../lib/servicios'
 import { eliminarArchivo } from '../lib/storage'
 import { ACCESORIOS_CATALOG } from './accesoriosCatalog'
 import { FOTOS_FIJAS_CATALOG } from './fotosFijasCatalog'
@@ -31,6 +31,7 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
   const [childData, setChildData] = useState({})
   const [accesorios, setAccesorios] = useState([])
   const [accesoriosRevisados, setAccesoriosRevisados] = useState([])
+  const [accesoriosDesinstalados, setAccesoriosDesinstalados] = useState([])
   const [fotos, setFotos] = useState([])
   const timers = useRef({})
   const fotosRef = useRef(fotos)
@@ -46,13 +47,15 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
     const nextChild = {}
     for (const t of CHILD_TABLES) nextChild[t] = full[t] ?? {}
     setChildData(nextChild)
-    const [accRes, accRevRes, fotoRes] = await Promise.all([
+    const [accRes, accRevRes, accDesRes, fotoRes] = await Promise.all([
       supabase.from('accesorios_instalados').select('*').eq('servicio_id', servicioId).order('updated_at'),
       supabase.from('accesorios_revisados').select('*').eq('servicio_id', servicioId).order('updated_at'),
+      supabase.from('accesorios_desinstalados').select('*').eq('servicio_id', servicioId).order('updated_at'),
       supabase.from('fotos').select('*').eq('servicio_id', servicioId),
     ])
     setAccesorios(accRes.data ?? [])
     setAccesoriosRevisados(accRevRes.data ?? [])
+    setAccesoriosDesinstalados(accDesRes.data ?? [])
     setFotos(fotoRes.data ?? [])
     return full
   }, [servicioId])
@@ -63,8 +66,9 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
     try {
       // Semilla idempotente: garantiza que existan las filas de catálogo sin pisar las ya guardadas.
       // Se siembra igual para todos los servicios (aunque "accesorios_revisados"
-      // solo se muestre en los de tipo "revision") - más simple que detectar el
-      // tipo antes de sembrar, y las filas de sobra en otros tipos no estorban.
+      // solo se muestre en los de tipo "revision", y "accesorios_desinstalados"
+      // solo en "desinstalacion_instalacion") - más simple que detectar el tipo
+      // antes de sembrar, y las filas de sobra en otros tipos no estorban.
       const seedAccesorios = () =>
         ACCESORIOS_CATALOG.map((a) => ({
           servicio_id: servicioId,
@@ -77,6 +81,9 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
         .upsert(seedAccesorios(), { onConflict: 'servicio_id,accesorio_key', ignoreDuplicates: true })
       await supabase
         .from('accesorios_revisados')
+        .upsert(seedAccesorios(), { onConflict: 'servicio_id,accesorio_key', ignoreDuplicates: true })
+      await supabase
+        .from('accesorios_desinstalados')
         .upsert(seedAccesorios(), { onConflict: 'servicio_id,accesorio_key', ignoreDuplicates: true })
       await supabase.from('fotos').upsert(
         FOTOS_FIJAS_CATALOG.map((f) => ({
@@ -126,6 +133,11 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'accesorios_revisados', filter: `servicio_id=eq.${servicioId}` },
         (payload) => setAccesoriosRevisados((prev) => mergeRow(prev, payload)),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'accesorios_desinstalados', filter: `servicio_id=eq.${servicioId}` },
+        (payload) => setAccesoriosDesinstalados((prev) => mergeRow(prev, payload)),
       )
       .on(
         'postgres_changes',
@@ -247,6 +259,9 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
     [servicioId],
   )
 
+  // Marcar/desmarcar también avisa a OS (sincronizarServicioConOS) -- esto es
+  // lo que Técnicos instaló de verdad en el servicio, así que si el accesorio
+  // existe como producto en OS (mismo nombre), se marca el check allá también.
   const toggleAccesorio = useCallback(
     (accesorioKey, checked) => {
       setAccesorios((prev) =>
@@ -259,6 +274,7 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
         .eq('accesorio_key', accesorioKey)
         .then(({ error }) => {
           if (error) console.error('[toggleAccesorio] no se pudo guardar', accesorioKey, error)
+          else sincronizarServicioConOS(servicioId)
         })
     },
     [servicioId],
@@ -279,6 +295,7 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
           .eq('accesorio_key', accesorioKey)
           .then(({ error }) => {
             if (error) console.error('[setAccesorioEtiqueta] no se pudo guardar', accesorioKey, error)
+            else sincronizarServicioConOS(servicioId)
           })
       }, 550)
     },
@@ -346,9 +363,74 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
     setAccesoriosRevisados((prev) => [...prev, data])
   }, [accesoriosRevisados, servicioId])
 
+  // "Accesorios desinstalados" (solo servicios tipo "desinstalacion_instalacion")
+  // - mismo patrón que toggleAccesorioRevisado/setAccesorioRevisadoEtiqueta/
+  // agregarOtroAccesorioRevisado de arriba, pero contra accesorios_desinstalados.
+  const toggleAccesorioDesinstalado = useCallback(
+    (accesorioKey, checked) => {
+      setAccesoriosDesinstalados((prev) =>
+        prev.map((a) => (a.accesorio_key === accesorioKey ? { ...a, checked } : a)),
+      )
+      supabase
+        .from('accesorios_desinstalados')
+        .update({ checked })
+        .eq('servicio_id', servicioId)
+        .eq('accesorio_key', accesorioKey)
+        .then(({ error }) => {
+          if (error) console.error('[toggleAccesorioDesinstalado] no se pudo guardar', accesorioKey, error)
+        })
+    },
+    [servicioId],
+  )
+
+  const setAccesorioDesinstaladoEtiqueta = useCallback(
+    (accesorioKey, etiqueta) => {
+      setAccesoriosDesinstalados((prev) =>
+        prev.map((a) => (a.accesorio_key === accesorioKey ? { ...a, etiqueta } : a)),
+      )
+      const timerKey = `accDes:${accesorioKey}`
+      clearTimeout(timers.current[timerKey])
+      timers.current[timerKey] = setTimeout(() => {
+        supabase
+          .from('accesorios_desinstalados')
+          .update({ etiqueta })
+          .eq('servicio_id', servicioId)
+          .eq('accesorio_key', accesorioKey)
+          .then(({ error }) => {
+            if (error) console.error('[setAccesorioDesinstaladoEtiqueta] no se pudo guardar', accesorioKey, error)
+          })
+      }, 550)
+    },
+    [servicioId],
+  )
+
+  const agregarOtroAccesorioDesinstalado = useCallback(async () => {
+    const numerosUsados = accesoriosDesinstalados
+      .map((a) => /^otro_(\d+)$/.exec(a.accesorio_key)?.[1])
+      .filter(Boolean)
+      .map(Number)
+    const siguiente = numerosUsados.length ? Math.max(...numerosUsados) + 1 : 1
+    const accesorioKey = `otro_${siguiente}`
+    const { data, error } = await supabase
+      .from('accesorios_desinstalados')
+      .insert({ servicio_id: servicioId, accesorio_key: accesorioKey, etiqueta: '', es_personalizado: true })
+      .select()
+      .single()
+    if (error) {
+      console.error('[agregarOtroAccesorioDesinstalado] no se pudo agregar', error)
+      return
+    }
+    setAccesoriosDesinstalados((prev) => [...prev, data])
+  }, [accesoriosDesinstalados, servicioId])
+
   // A diferencia de updateField (tablas hijas, upsert por servicio_id), esto
   // actualiza directo una columna de "servicios" (datos del cliente / vehículo,
   // que viven en la fila principal, no en una tabla hija).
+  //
+  // Cada guardado exitoso también avisa a OS (sincronizarServicioConOS) --
+  // antes solo se avisaba al CREAR el servicio, así que cualquier corrección
+  // posterior (placas, técnico reasignado, tipo, etc.) se quedaba solo en
+  // Técnicos y nunca llegaba a OS.
   const updateServicioField = useCallback(
     (key, value, { immediate = false } = {}) => {
       setServicio((prev) => (prev ? { ...prev, [key]: value } : prev))
@@ -362,6 +444,7 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
             .eq('id', servicioId)
             .then(({ error }) => {
               if (error) console.error('[updateServicioField] no se pudo guardar', key, error)
+              else sincronizarServicioConOS(servicioId)
             })
         },
         immediate ? 0 : 550,
@@ -408,6 +491,7 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
       childData,
       accesorios,
       accesoriosRevisados,
+      accesoriosDesinstalados,
       fotos,
       updateField,
       toggleAccesorio,
@@ -416,6 +500,9 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
       toggleAccesorioRevisado,
       setAccesorioRevisadoEtiqueta,
       agregarOtroAccesorioRevisado,
+      toggleAccesorioDesinstalado,
+      setAccesorioDesinstaladoEtiqueta,
+      agregarOtroAccesorioDesinstalado,
       updateServicioField,
       updateFotoLocal,
       patchServicioLocal,
@@ -428,6 +515,7 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
       childData,
       accesorios,
       accesoriosRevisados,
+      accesoriosDesinstalados,
       fotos,
       updateField,
       toggleAccesorio,
@@ -436,6 +524,9 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
       toggleAccesorioRevisado,
       setAccesorioRevisadoEtiqueta,
       agregarOtroAccesorioRevisado,
+      toggleAccesorioDesinstalado,
+      setAccesorioDesinstaladoEtiqueta,
+      agregarOtroAccesorioDesinstalado,
       updateServicioField,
       updateFotoLocal,
       patchServicioLocal,

@@ -4,6 +4,7 @@ import { RequireAuth } from './auth/RequireAuth'
 import { RealtimeProvider } from './auth/RealtimeProvider'
 import LoginScreen from './pages/LoginScreen'
 import AdminDashboard from './pages/admin/AdminDashboard'
+import AdminAgenda from './pages/admin/AdminAgenda'
 import NuevoServicioForm from './pages/admin/NuevoServicioForm'
 import AdminServicioDetalle from './pages/admin/AdminServicioDetalle'
 import GestionUsuarios from './pages/admin/GestionUsuarios'
@@ -36,6 +37,14 @@ export default function App() {
               element={
                 <RequireAuth role="admin">
                   <AdminDashboard />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/admin/agenda"
+              element={
+                <RequireAuth role="admin">
+                  <AdminAgenda />
                 </RequireAuth>
               }
             />

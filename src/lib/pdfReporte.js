@@ -296,6 +296,9 @@ async function dibujarPortada(r, servicio) {
     ['VIN / Serie', servicio.vin_serie],
     ['Tipo de unidad', tipoUnidad],
     ['IMEI del GPS', servicio.imei_gps],
+    ...(servicio.tipo_servicio === 'desinstalacion_instalacion'
+      ? [['IMEI a desinstalar', servicio.imei_gps_desinstalacion]]
+      : []),
   ])
 }
 
@@ -347,6 +350,15 @@ function dibujarChecklist(r, servicio) {
       'Accesorios revisados',
       (servicio.accesorios_revisados ?? []).filter((a) => a.checked),
       'Ningún accesorio revisado.',
+    )
+  }
+
+  if (servicio.tipo_servicio === 'desinstalacion_instalacion') {
+    dibujarListaAccesorios(
+      r,
+      'Accesorios desinstalados',
+      (servicio.accesorios_desinstalados ?? []).filter((a) => a.checked),
+      'Ningún accesorio desinstalado.',
     )
   }
 

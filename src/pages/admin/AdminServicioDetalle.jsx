@@ -27,7 +27,7 @@ const APROBADORES = [
 
 // Únicos que pueden seguir editando un servicio ya "aprobado" (para todos los
 // demás, aprobado queda cerrado -- ver datosEditable más abajo).
-const PUEDEN_EDITAR_APROBADOS = ['hector tamez', 'raul ornelas']
+const PUEDEN_EDITAR_APROBADOS = ['hector', 'hector tamez', 'raul ornelas']
 function puedeEditarAprobados(nombre) {
   return PUEDEN_EDITAR_APROBADOS.includes((nombre || '').trim().toLowerCase())
 }

@@ -146,15 +146,28 @@ export const CHECKLIST_STEPS = [
 // al final (las fotos son solo para lo que el técnico instala hoy).
 const ACCESORIOS_REVISADOS_STEP = { key: 'accesorios_revisados', label: 'Accesorios revisados' }
 
+// Solo para "desinstalacion_instalacion": el técnico quita un equipo Y pone
+// otro en la misma visita, así que necesita DOS checklists de accesorios --
+// este para lo que se retira (mismo catálogo, tabla aparte, sin fotos, igual
+// que "revisados"), y el paso normal "accesorios" para lo que se instala.
+const ACCESORIOS_DESINSTALADOS_STEP = { key: 'accesorios_desinstalados', label: 'Accesorios desinstalados' }
+
 // El paso "accesorios" se llama distinto según el tipo de servicio: en una
-// desinstalación el técnico está quitando accesorios, no instalándolos.
+// desinstalación el técnico está quitando accesorios, no instalándolos. En
+// "desinstalacion_instalacion" este paso sigue siendo "instalados" -- lo
+// desinstalado tiene su propio paso aparte (ver arriba).
 export function accesoriosLabel(servicio) {
   return servicio?.tipo_servicio === 'desinstalacion' ? 'Accesorios desinstalados' : 'Accesorios instalados'
 }
 
 export function getChecklistSteps(servicio) {
   const steps = CHECKLIST_STEPS.map((s) => (s.key === 'accesorios' ? { ...s, label: accesoriosLabel(servicio) } : s))
-  if (servicio?.tipo_servicio !== 'revision') return steps
   const idx = steps.findIndex((s) => s.key === 'accesorios')
-  return [...steps.slice(0, idx), ACCESORIOS_REVISADOS_STEP, ...steps.slice(idx)]
+  if (servicio?.tipo_servicio === 'revision') {
+    return [...steps.slice(0, idx), ACCESORIOS_REVISADOS_STEP, ...steps.slice(idx)]
+  }
+  if (servicio?.tipo_servicio === 'desinstalacion_instalacion') {
+    return [...steps.slice(0, idx), ACCESORIOS_DESINSTALADOS_STEP, ...steps.slice(idx)]
+  }
+  return steps
 }

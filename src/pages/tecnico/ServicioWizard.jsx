@@ -26,6 +26,16 @@ function TarjetaIniciar({ servicio, onIniciado }) {
 
   return (
     <div className="container" style={{ maxWidth: 520 }}>
+      {servicio.fecha_programada && (
+        <div className="panel">
+          <h2>Día y hora del servicio</h2>
+          <p>
+            <strong>
+              {new Date(servicio.fecha_programada).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' })}
+            </strong>
+          </p>
+        </div>
+      )}
       <div className="panel">
         <h2>Datos del cliente</h2>
         <p>
@@ -49,6 +59,12 @@ function TarjetaIniciar({ servicio, onIniciado }) {
           <br />
           IMEI del GPS: {servicio.imei_gps || '—'}
           <br />
+          {servicio.tipo_servicio === 'desinstalacion_instalacion' && (
+            <>
+              IMEI a desinstalar: {servicio.imei_gps_desinstalacion || '—'}
+              <br />
+            </>
+          )}
           Modelo GPS: {servicio.gps_tipo || '—'}
         </p>
       </div>

@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
     // que mande el cliente, para que el mapeo salga siempre de la fuente real.
     const { data: servicio, error: servicioErr } = await admin
       .from('servicios')
-      .select('numero_servicio, tipo_servicio, cliente_nombre, imei_gps, placas, tecnico_id, tipo_paquete, tipo_paquete_otro, gps_tipo, causa_rev, causa_des')
+      .select('numero_servicio, tipo_servicio, cliente_nombre, imei_gps, imei_gps_desinstalacion, unidad_razon_social, tecnico_id, tipo_paquete, tipo_paquete_otro, gps_tipo, causa_rev, causa_des')
       .eq('id', servicioId)
       .single()
 
@@ -76,6 +76,15 @@ Deno.serve(async (req) => {
       tecnicoNombre = tecnico?.nombre ?? null
     }
 
+    // Accesorios marcados como instalados -- OS los busca por nombre en su
+    // catálogo de "products" y marca el check ahí si existe uno igual.
+    const { data: accesoriosInstalados } = await admin
+      .from('accesorios_instalados')
+      .select('etiqueta')
+      .eq('servicio_id', servicioId)
+      .eq('checked', true)
+    const accesorios = (accesoriosInstalados ?? []).map((a) => a.etiqueta).filter(Boolean)
+
     const res = await fetch(OS_SYNC_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-sync-secret': osSyncSecret },
@@ -85,13 +94,20 @@ Deno.serve(async (req) => {
         tipoServicio: servicio.tipo_servicio,
         clienteNombre: servicio.cliente_nombre,
         imei: servicio.imei_gps,
-        placas: servicio.placas,
+        // Solo se llena en "desinstalacion_instalacion" (el equipo que se
+        // retira, aparte del que se instala arriba).
+        imeiDesinstalacion: servicio.imei_gps_desinstalacion,
+        // Placa de OS ahora se llena con Unidad/Económico de Técnicos, no con
+        // el campo "placas" -- se sigue llamando "placas" en este payload
+        // solo para no tocar el nombre que ya espera OS del otro lado.
+        placas: servicio.unidad_razon_social,
         tecnicoNombre,
         tipoPaquete: servicio.tipo_paquete,
         tipoPaqueteOtro: servicio.tipo_paquete_otro,
         gpsTipo: servicio.gps_tipo,
         causaRev: servicio.causa_rev,
         causaDes: servicio.causa_des,
+        accesoriosInstalados: accesorios,
       }),
     })
 

@@ -7,7 +7,10 @@ const STATUS_LABEL = {
   idle: '',
 }
 
-export function FotoSlot({ servicioId, foto }) {
+/** onOpen es opcional: si se pasa y la foto ya está subida (no en proceso ni
+ * con error), la imagen se puede abrir en grande (ver FotoLightbox en
+ * ServicioResumen.jsx) sin interferir con "Quitar"/"Reintentar". */
+export function FotoSlot({ servicioId, foto, onOpen }) {
   const { status, previewUrl, remoteUrl, handleFile, retry, quitar } = useFotoUpload(
     servicioId,
     foto,
@@ -15,6 +18,7 @@ export function FotoSlot({ servicioId, foto }) {
   const img = previewUrl ?? remoteUrl
   const inputId = `foto-${foto.id}`
   const galleryId = `foto-gal-${foto.id}`
+  const puedeAbrir = Boolean(onOpen && img && foto.storage_path && status !== 'subiendo')
 
   return (
     <div className={`foto-slot ${img ? 'has-photo' : ''}`}>
@@ -33,7 +37,12 @@ export function FotoSlot({ servicioId, foto }) {
 
         {img ? (
           <>
-            <img src={img} alt={foto.etiqueta} />
+            <img
+              src={img}
+              alt={foto.etiqueta}
+              style={puedeAbrir ? { cursor: 'pointer' } : undefined}
+              onClick={puedeAbrir ? () => onOpen(foto) : undefined}
+            />
             <div className="foto-slot-actions">
               {status === 'error' ? (
                 <button type="button" className="btn btn-primary" style={{ minHeight: 32, padding: '4px 10px' }} onClick={retry}>

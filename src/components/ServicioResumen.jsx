@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { ChecklistField } from './ChecklistField'
 import { FotoSlot } from './FotoSlot'
 import { CHECKLIST_STEPS, OTROS_DATOS_GROUPS, accesoriosLabel } from '../wizard/fieldsConfig'
-import { getSignedUrl } from '../lib/storage'
+import { getSignedUrl, getSignedDownloadUrl } from '../lib/storage'
 import { listTecnicos } from '../lib/servicios'
 import { TIPO_SERVICIO_LABEL, TIPO_PAQUETE_LABEL, TIPOS_PAQUETE, MODELOS_GPS, CAUSAS_REV, CAUSAS_DES } from '../lib/estado'
 import { useServicioWizard } from '../wizard/ServicioWizardContext'
 import { GenericChecklistStep } from '../wizard/steps/GenericChecklistStep'
 import { AccesoriosStep } from '../wizard/steps/AccesoriosStep'
 import { AccesoriosRevisadosStep } from '../wizard/steps/AccesoriosRevisadosStep'
+import { AccesoriosDesinstaladosStep } from '../wizard/steps/AccesoriosDesinstaladosStep'
 import { OtrosDatosStep } from '../wizard/steps/OtrosDatosStep'
 
 const TIPO_UNIDAD_LABEL = {
@@ -21,6 +22,15 @@ const TIPO_UNIDAD_LABEL = {
 function formatFecha(iso) {
   if (!iso) return null
   return new Date(iso).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+// input[type=datetime-local] necesita "YYYY-MM-DDTHH:mm" en hora local (sin
+// zona) -- convierte desde/hacia el ISO (con zona) que se guarda en la base.
+function isoToDatetimeLocal(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 function DatoRow({ label, value }) {
@@ -41,6 +51,21 @@ function DatoCampo({ label, value, editable, onChange }) {
     <div className="field">
       <label>{label}</label>
       <input type="text" value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  )
+}
+
+/** Igual que DatoCampo, pero como input[type=datetime-local] (día y hora). */
+function DatoFechaHora({ label, value, editable, onChange }) {
+  if (!editable) return <DatoRow label={label} value={formatFecha(value)} />
+  return (
+    <div className="field">
+      <label>{label}</label>
+      <input
+        type="datetime-local"
+        value={isoToDatetimeLocal(value)}
+        onChange={(e) => onChange(e.target.value ? new Date(e.target.value).toISOString() : null)}
+      />
     </div>
   )
 }
@@ -150,7 +175,9 @@ function FirmaImg({ path, alt }) {
   )
 }
 
-function FotoThumb({ foto }) {
+/** onOpen es opcional: si se pasa (viene con foto ya con storage_path), la
+ * miniatura se vuelve clicable y abre FotoLightbox en grande. */
+function FotoThumb({ foto, onOpen }) {
   const [url, setUrl] = useState(null)
   useEffect(() => {
     let active = true
@@ -159,8 +186,15 @@ function FotoThumb({ foto }) {
       active = false
     }
   }, [foto.storage_path])
+  const clicable = Boolean(onOpen && foto.storage_path)
   return (
-    <div className="foto-slot has-photo" style={{ cursor: 'default' }}>
+    <div
+      className="foto-slot has-photo"
+      style={{ cursor: clicable ? 'pointer' : 'default' }}
+      onClick={clicable ? () => onOpen(foto) : undefined}
+      role={clicable ? 'button' : undefined}
+      tabIndex={clicable ? 0 : undefined}
+    >
       <div className="foto-slot-media">
         {url ? (
           <img src={url} alt={foto.etiqueta} />
@@ -169,6 +203,78 @@ function FotoThumb({ foto }) {
         )}
       </div>
       <span className="foto-slot-caption">{foto.etiqueta}</span>
+    </div>
+  )
+}
+
+/** Vista en grande de una foto (clic sobre una FotoThumb), con botón para
+ * descargarla. La URL de descarga se pide aparte de la de mostrar porque
+ * lleva la opción "download" de Supabase (Content-Disposition: attachment)
+ * -- si se usara esa misma URL en el <img>, el navegador la descargaría en
+ * vez de mostrarla. */
+function FotoLightbox({ foto, onClose }) {
+  const [url, setUrl] = useState(null)
+  const [downloadUrl, setDownloadUrl] = useState(null)
+
+  useEffect(() => {
+    let active = true
+    getSignedUrl(foto.storage_path).then((u) => active && setUrl(u))
+    const nombreArchivo = `${(foto.etiqueta || foto.accesorio_key || 'foto').replace(/[^a-z0-9]+/gi, '_')}.jpg`
+    getSignedDownloadUrl(foto.storage_path, nombreArchivo).then((u) => active && setDownloadUrl(u))
+    return () => {
+      active = false
+    }
+  }, [foto.storage_path])
+
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0, 0, 0, 0.8)',
+        zIndex: 1000,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', maxWidth: '100%', maxHeight: '100%' }}
+      >
+        {url ? (
+          <img src={url} alt={foto.etiqueta} style={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: 8 }} />
+        ) : (
+          <div className="spinner" />
+        )}
+        <div className="row" style={{ marginTop: 14, gap: 10 }}>
+          <span style={{ color: '#fff' }}>{foto.etiqueta}</span>
+          <a
+            className="btn btn-primary"
+            href={downloadUrl || undefined}
+            aria-disabled={!downloadUrl}
+            onClick={(e) => {
+              if (!downloadUrl) e.preventDefault()
+            }}
+          >
+            Descargar
+          </a>
+          <button type="button" className="btn" onClick={onClose}>
+            Cerrar
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -189,6 +295,12 @@ function ChecklistEditable() {
         <>
           <div className="wizard-step-title">Accesorios revisados</div>
           <AccesoriosRevisadosStep />
+        </>
+      )}
+      {servicio?.tipo_servicio === 'desinstalacion_instalacion' && (
+        <>
+          <div className="wizard-step-title">Accesorios desinstalados</div>
+          <AccesoriosDesinstaladosStep />
         </>
       )}
       <div className="wizard-step-title">{accesoriosLabel(servicio)}</div>
@@ -229,9 +341,18 @@ function DatoTecnico({ tecnicoId, tecnicoNombre, tecnicos, editable, onChange })
  * `datosEditable` (solo admin, mientras el servicio no esté "aprobado")
  * permite corregir los datos del cliente y del vehículo/unidad. */
 export function ServicioResumen({ checklistEditable = false, fotosEditable = false, datosEditable = false }) {
-  const { servicio, childData, accesorios, accesoriosRevisados, fotos, updateServicioField, patchServicioLocal } =
-    useServicioWizard()
+  const {
+    servicio,
+    childData,
+    accesorios,
+    accesoriosRevisados,
+    accesoriosDesinstalados,
+    fotos,
+    updateServicioField,
+    patchServicioLocal,
+  } = useServicioWizard()
   const [tecnicos, setTecnicos] = useState([])
+  const [fotoAbierta, setFotoAbierta] = useState(null)
 
   useEffect(() => {
     if (!datosEditable) return
@@ -247,6 +368,7 @@ export function ServicioResumen({ checklistEditable = false, fotosEditable = fal
 
   const accesoriosMarcados = (accesorios ?? []).filter((a) => a.checked)
   const accesoriosRevisadosMarcados = (accesoriosRevisados ?? []).filter((a) => a.checked)
+  const accesoriosDesinstaladosMarcados = (accesoriosDesinstalados ?? []).filter((a) => a.checked)
   const campoServicio = (key) => (value) => updateServicioField(key, value)
 
   // El técnico ya asignado puede estar inactivo (o venir de un select que
@@ -267,6 +389,12 @@ export function ServicioResumen({ checklistEditable = false, fotosEditable = fal
     <div className="stack">
       {servicio.tipo_servicio && (
         <div className="panel">
+          <DatoFechaHora
+            label="Día y hora del servicio"
+            value={servicio.fecha_programada}
+            editable={datosEditable}
+            onChange={campoServicio('fecha_programada')}
+          />
           <DatoRow label="Servicio" value={TIPO_SERVICIO_LABEL[servicio.tipo_servicio]} />
           <DatoTipoPaquete
             tipoPaquete={servicio.tipo_paquete}
@@ -307,10 +435,10 @@ export function ServicioResumen({ checklistEditable = false, fotosEditable = fal
       <div className="panel">
         <h2>Datos del vehículo / unidad</h2>
         <DatoCampo label="Unidad/Económico" value={servicio.unidad_razon_social} editable={datosEditable} onChange={campoServicio('unidad_razon_social')} />
+        <DatoCampo label="Placas" value={servicio.placas} editable={datosEditable} onChange={campoServicio('placas')} />
         <DatoCampo label="Marca" value={servicio.marca} editable={datosEditable} onChange={campoServicio('marca')} />
         <DatoCampo label="Modelo" value={servicio.modelo} editable={datosEditable} onChange={campoServicio('modelo')} />
         <DatoCampo label="Año" value={servicio.anio} editable={datosEditable} onChange={campoServicio('anio')} />
-        <DatoCampo label="Placas" value={servicio.placas} editable={datosEditable} onChange={campoServicio('placas')} />
         <DatoCampo label="Color" value={servicio.color} editable={datosEditable} onChange={campoServicio('color')} />
         <DatoCampo label="VIN / Serie" value={servicio.vin_serie} editable={datosEditable} onChange={campoServicio('vin_serie')} />
         <DatoTipoUnidad
@@ -322,6 +450,14 @@ export function ServicioResumen({ checklistEditable = false, fotosEditable = fal
           onChangeOtra={campoServicio('tipo_unidad_otra')}
         />
         <DatoCampo label="IMEI del GPS" value={servicio.imei_gps} editable={datosEditable} onChange={campoServicio('imei_gps')} />
+        {servicio.tipo_servicio === 'desinstalacion_instalacion' && (
+          <DatoCampo
+            label="IMEI a desinstalar"
+            value={servicio.imei_gps_desinstalacion}
+            editable={datosEditable}
+            onChange={campoServicio('imei_gps_desinstalacion')}
+          />
+        )}
         <DatoSelect label="Modelo GPS" value={servicio.gps_tipo} options={MODELOS_GPS} editable={datosEditable} onChange={campoServicio('gps_tipo')} />
         <DatoTecnico
           tecnicoId={servicio.tecnico_id}
@@ -357,6 +493,21 @@ export function ServicioResumen({ checklistEditable = false, fotosEditable = fal
               <h2>Accesorios revisados</h2>
               {accesoriosRevisadosMarcados.length === 0 && <p className="muted">Ninguno marcado.</p>}
               {accesoriosRevisadosMarcados.map((a) => (
+                <div className="checklist-item" key={a.id}>
+                  <span aria-hidden style={{ width: 22, flexShrink: 0 }}>
+                    ✅
+                  </span>
+                  <label>{a.etiqueta || a.accesorio_key}</label>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {servicio.tipo_servicio === 'desinstalacion_instalacion' && (
+            <div className="panel">
+              <h2>Accesorios desinstalados</h2>
+              {accesoriosDesinstaladosMarcados.length === 0 && <p className="muted">Ninguno marcado.</p>}
+              {accesoriosDesinstaladosMarcados.map((a) => (
                 <div className="checklist-item" key={a.id}>
                   <span aria-hidden style={{ width: 22, flexShrink: 0 }}>
                     ✅
@@ -413,9 +564,9 @@ export function ServicioResumen({ checklistEditable = false, fotosEditable = fal
         <div className="foto-grid">
           {(fotos ?? []).map((f) =>
             fotosEditable ? (
-              <FotoSlot key={f.id} servicioId={servicio.id} foto={f} />
+              <FotoSlot key={f.id} servicioId={servicio.id} foto={f} onOpen={setFotoAbierta} />
             ) : (
-              <FotoThumb key={f.id} foto={f} />
+              <FotoThumb key={f.id} foto={f} onOpen={setFotoAbierta} />
             ),
           )}
         </div>
@@ -434,6 +585,8 @@ export function ServicioResumen({ checklistEditable = false, fotosEditable = fal
           <p className="text-sm muted">{servicio.firma_cliente_nombre}</p>
         </div>
       )}
+
+      {fotoAbierta && <FotoLightbox foto={fotoAbierta} onClose={() => setFotoAbierta(null)} />}
     </div>
   )
 }

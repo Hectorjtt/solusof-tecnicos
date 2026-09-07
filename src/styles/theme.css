@@ -205,6 +205,27 @@ a {
   background: var(--off-bg);
 }
 
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.btn-icon:hover {
+  background: var(--off-bg);
+  border-color: var(--border);
+}
+
 .btn-block {
   width: 100%;
 }
@@ -560,11 +581,21 @@ a {
   inset: 0;
   display: flex;
   align-items: flex-end;
+  justify-content: flex-end;
   gap: 4px;
   padding: 6px;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent 60%);
   opacity: 0;
   transition: opacity 0.15s;
+  /* Cubre toda la foto (inset: 0) para poder alinear el botón abajo, pero
+     eso tapaba los clics sobre la imagen -- aunque estuviera invisible
+     (opacity: 0), seguía interceptando el click antes de que llegara al
+     <img> debajo. Aquí se ignoran los clics salvo sobre el botón mismo. */
+  pointer-events: none;
+}
+
+.foto-slot-actions > * {
+  pointer-events: auto;
 }
 
 .foto-slot.has-photo:hover .foto-slot-actions,
@@ -702,4 +733,103 @@ a {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+}
+
+/* Calendario (Agenda) */
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.calendar-weekday {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  padding-bottom: 6px;
+}
+
+.calendar-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 76px;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+@media (min-width: 640px) {
+  .calendar-cell {
+    min-height: 96px;
+    padding: 8px;
+  }
+}
+
+.calendar-cell:hover {
+  border-color: var(--accent);
+}
+
+.calendar-cell.is-outside {
+  background: var(--off-bg);
+  color: var(--muted);
+}
+
+.calendar-cell.is-today {
+  border-color: var(--accent);
+  border-width: 2px;
+}
+
+.calendar-cell.is-selected {
+  background: var(--accent-light);
+}
+
+.calendar-cell-day {
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.calendar-cell-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.calendar-chip {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--accent-light);
+  color: var(--accent-dark);
+}
+
+.calendar-chip:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.calendar-chip-mas {
+  font-size: 0.66rem;
+  color: var(--muted);
+  padding: 0 5px;
 }

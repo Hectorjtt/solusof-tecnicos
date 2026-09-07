@@ -11,6 +11,7 @@ const SERVICIO_COMPLETO_SELECT = `
   otros_datos ( * ),
   accesorios_instalados ( * ),
   accesorios_revisados ( * ),
+  accesorios_desinstalados ( * ),
   fotos ( * )
 `
 
@@ -81,15 +82,49 @@ export async function sincronizarAprobacionConOS(servicioId) {
   }
 }
 
-export async function listServicios({ status } = {}) {
+// Avisa a OS que se "eliminó" (ocultó) el servicio, para que borre su copia
+// (pendiente o ya aprobado, lo que exista). Igual que arriba, no debe tronar
+// el flujo si falla.
+export async function sincronizarEliminacionConOS(servicioId) {
+  try {
+    const { error } = await supabase.functions.invoke('sync-eliminacion-a-os', {
+      body: { servicioId },
+    })
+    if (error) throw error
+  } catch (err) {
+    console.error('No se pudo sincronizar la eliminación con OS:', err)
+  }
+}
+
+export async function listServicios({ status, oculto = false } = {}) {
   let query = supabase
     .from('servicios')
     .select('*, tecnico:tecnico_id ( id, nombre )')
     .order('created_at', { ascending: false })
   if (status) query = query.eq('status', status)
+  if (oculto !== null) query = query.eq('oculto', oculto)
   const { data, error } = await query
   if (error) throw error
   return data
+}
+
+// "Eliminar" un servicio == ocultarlo (nunca se borra el registro de verdad,
+// así se puede recuperar). Restringido en la UI a un puñado de personas, ver
+// PUEDEN_ELIMINAR en AdminDashboard.jsx. También avisa a OS para que borre
+// su copia (fire-and-forget, no bloquea el flujo si OS falla).
+export async function ocultarServicio(id) {
+  const { error } = await supabase.from('servicios').update({ oculto: true }).eq('id', id)
+  if (error) throw error
+  sincronizarEliminacionConOS(id)
+}
+
+// Al restaurar, se vuelve a mandar a OS como si se acabara de sincronizar
+// (mismo endpoint que al crear/editar) -- reaparece ahí con los datos tal
+// como estén ahora mismo en Técnicos.
+export async function restaurarServicio(id) {
+  const { error } = await supabase.from('servicios').update({ oculto: false }).eq('id', id)
+  if (error) throw error
+  sincronizarServicioConOS(id)
 }
 
 export async function listMisServicios(tecnicoId) {
@@ -97,6 +132,7 @@ export async function listMisServicios(tecnicoId) {
     .from('servicios')
     .select('*')
     .eq('tecnico_id', tecnicoId)
+    .eq('oculto', false)
     .order('created_at', { ascending: false })
   if (error) throw error
   return data

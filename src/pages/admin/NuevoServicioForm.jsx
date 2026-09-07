@@ -18,9 +18,11 @@ const TIPOS_SERVICIO = [
   { value: 'revision', label: 'Revisión' },
   { value: 'reinstalacion', label: 'Reinstalación' },
   { value: 'desinstalacion', label: 'Desinstalación' },
+  { value: 'desinstalacion_instalacion', label: 'Desinstalación e Instalación' },
 ]
 
 const initialForm = {
+  fecha_programada: '',
   tipo_servicio: '',
   tipo_paquete: '',
   tipo_paquete_otro: '',
@@ -40,6 +42,7 @@ const initialForm = {
   tipo_unidad: '',
   tipo_unidad_otra: '',
   imei_gps: '',
+  imei_gps_desinstalacion: '',
   gps_tipo: '',
   tecnico_id: '',
 }
@@ -65,6 +68,10 @@ export default function NuevoServicioForm() {
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    if (!form.fecha_programada) {
+      setError('Selecciona el día y hora en que se hará el servicio.')
+      return
+    }
     if (!form.cliente_nombre.trim()) {
       setError('Falta el nombre del cliente.')
       return
@@ -89,6 +96,7 @@ export default function NuevoServicioForm() {
     try {
       const payload = {
         ...form,
+        fecha_programada: new Date(form.fecha_programada).toISOString(),
         tipo_unidad: form.tipo_unidad || null,
         creado_por: profile.id,
       }
@@ -108,7 +116,16 @@ export default function NuevoServicioForm() {
       <form className="container" style={{ maxWidth: 720 }} onSubmit={handleSubmit}>
         <div className="panel">
           <h2>Servicio</h2>
-          <div className="radio-row">
+          <div className="field">
+            <label htmlFor="fecha_programada">Día y hora del servicio</label>
+            <input
+              id="fecha_programada"
+              type="datetime-local"
+              value={form.fecha_programada}
+              onChange={set('fecha_programada')}
+            />
+          </div>
+          <div className="radio-row" style={{ marginTop: 12 }}>
             {TIPOS_SERVICIO.map((t) => (
               <label key={t.value}>
                 <input
@@ -197,9 +214,15 @@ export default function NuevoServicioForm() {
 
         <div className="panel">
           <h2>Datos del vehículo / unidad</h2>
-          <div className="field">
-            <label htmlFor="unidad_razon_social">Unidad/Económico</label>
-            <input id="unidad_razon_social" type="text" value={form.unidad_razon_social} onChange={set('unidad_razon_social')} />
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="unidad_razon_social">Unidad/Económico</label>
+              <input id="unidad_razon_social" type="text" value={form.unidad_razon_social} onChange={set('unidad_razon_social')} />
+            </div>
+            <div className="field">
+              <label htmlFor="placas">Placas</label>
+              <input id="placas" type="text" value={form.placas} onChange={set('placas')} />
+            </div>
           </div>
           <div className="grid-2">
             <div className="field">
@@ -221,15 +244,9 @@ export default function NuevoServicioForm() {
               <input id="color" type="text" value={form.color} onChange={set('color')} />
             </div>
           </div>
-          <div className="grid-2">
-            <div className="field">
-              <label htmlFor="placas">Placas</label>
-              <input id="placas" type="text" value={form.placas} onChange={set('placas')} />
-            </div>
-            <div className="field">
-              <label htmlFor="vin_serie">VIN / Serie</label>
-              <input id="vin_serie" type="text" value={form.vin_serie} onChange={set('vin_serie')} />
-            </div>
+          <div className="field">
+            <label htmlFor="vin_serie">VIN / Serie</label>
+            <input id="vin_serie" type="text" value={form.vin_serie} onChange={set('vin_serie')} />
           </div>
 
           <div className="field">
@@ -276,6 +293,17 @@ export default function NuevoServicioForm() {
               </select>
             </div>
           </div>
+          {form.tipo_servicio === 'desinstalacion_instalacion' && (
+            <div className="field">
+              <label htmlFor="imei_gps_desinstalacion">IMEI a desinstalar</label>
+              <input
+                id="imei_gps_desinstalacion"
+                type="text"
+                value={form.imei_gps_desinstalacion}
+                onChange={set('imei_gps_desinstalacion')}
+              />
+            </div>
+          )}
           <div className="field">
             <label htmlFor="tecnico_id">Técnico instalador</label>
             <select id="tecnico_id" required value={form.tecnico_id} onChange={set('tecnico_id')}>
