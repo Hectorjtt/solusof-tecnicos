@@ -297,8 +297,6 @@ async function dibujarPortada(r, servicio) {
   r.sectionTitle('Datos del cliente')
   r.filasDatos([
     ['Cliente', servicio.cliente_nombre],
-    ['Teléfono', servicio.cliente_telefono],
-    ['Correo', (servicio.cliente_correos ?? []).filter(Boolean).join(', ')],
     ['Dirección', servicio.cliente_direccion],
   ])
 
