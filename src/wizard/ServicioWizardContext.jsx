@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import { getServicioCompleto, sincronizarServicioConOS } from '../lib/servicios'
 import { eliminarArchivo } from '../lib/storage'
 import { ACCESORIOS_CATALOG } from './accesoriosCatalog'
-import { FOTOS_FIJAS_CATALOG } from './fotosFijasCatalog'
+import { fotosFijasParaServicio } from './fotosFijasCatalog'
 
 const CHILD_TABLES = [
   'recepcion_verificacion',
@@ -85,8 +85,11 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
       await supabase
         .from('accesorios_desinstalados')
         .upsert(seedAccesorios(), { onConflict: 'servicio_id,accesorio_key', ignoreDuplicates: true })
+      // Necesita el servicio (tipo_paquete) para saber si el slot "buzzer"
+      // aplica -- ver fotosFijasParaServicio.
+      const servicioActual = await getServicioCompleto(servicioId)
       await supabase.from('fotos').upsert(
-        FOTOS_FIJAS_CATALOG.map((f) => ({
+        fotosFijasParaServicio(servicioActual).map((f) => ({
           servicio_id: servicioId,
           slot_key: f.key,
           slot_tipo: 'fija',

@@ -11,4 +11,15 @@ export const FOTOS_FIJAS_CATALOG = [
   { key: 'tablero_armado', label: 'Fotografía de tablero armado' },
   { key: 'entrega_final', label: 'Fotografía de la entrega final' },
   { key: 'antena_gps', label: 'Fotografía de la antena GPS' },
+  // Solo aplica a paquetes "Protocolo" (con o sin RFID) -- ver fotosFijasParaServicio.
+  { key: 'buzzer', label: 'Fotografía del buzzer', soloProtocolo: true },
 ]
+
+const PAQUETES_PROTOCOLO = ['protocolo_sin_rfid', 'protocolo_con_rfid']
+
+/** Fotos fijas que aplican para un servicio dado -- todas las de siempre, más
+ * "buzzer" cuando el paquete contratado es alguna variante de "Protocolo". */
+export function fotosFijasParaServicio(servicio) {
+  const esProtocolo = PAQUETES_PROTOCOLO.includes(servicio?.tipo_paquete)
+  return FOTOS_FIJAS_CATALOG.filter((f) => !f.soloProtocolo || esProtocolo)
+}
