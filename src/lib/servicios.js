@@ -47,6 +47,33 @@ export async function listTecnicos() {
   return data
 }
 
+// Todos los correos ya capturados antes para cada nombre de cliente -- para
+// autocompletar "Correo electrónico" en Nuevo servicio en cuanto se
+// reconoce un cliente que ya se había registrado (si ese cliente ha tenido
+// varios correos distintos entre servicios, se juntan todos). Clave
+// normalizada (trim+lowercase) porque el mismo cliente a veces se escribe
+// con distintas mayúsculas entre un servicio y otro.
+export async function buscarCorreosClientes() {
+  const { data, error } = await supabase
+    .from('servicios')
+    .select('cliente_nombre, cliente_correos')
+    .not('cliente_correos', 'is', null)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  const mapa = new Map()
+  for (const row of data) {
+    const nombre = (row.cliente_nombre || '').trim().toLowerCase()
+    if (!nombre) continue
+    const existentes = mapa.get(nombre) ?? []
+    for (const correoCrudo of row.cliente_correos ?? []) {
+      const correo = (correoCrudo || '').trim()
+      if (correo && !existentes.includes(correo)) existentes.push(correo)
+    }
+    mapa.set(nombre, existentes)
+  }
+  return mapa
+}
+
 export async function crearServicio(payload) {
   const { data, error } = await supabase.from('servicios').insert(payload).select().single()
   if (error) throw error
@@ -80,6 +107,19 @@ export async function sincronizarAprobacionConOS(servicioId) {
   } catch (err) {
     console.error('No se pudo sincronizar la aprobación con OS:', err)
   }
+}
+
+// Manda el PDF del reporte (ya generado y subido a Storage) al correo del
+// cliente, desde el correo real de la empresa (SMTP, ver Edge Function).
+// A diferencia de las sincronizaciones con OS, SÍ deja que el llamador se
+// entere si falla (o si no había correo capturado) -- el admin querría
+// saberlo en vez de que se pierda en silencio.
+export async function enviarReportePorCorreo(servicioId) {
+  const { data, error } = await supabase.functions.invoke('enviar-reporte-email', {
+    body: { servicioId },
+  })
+  if (error) throw error
+  return data
 }
 
 // Avisa a OS que se "eliminó" (ocultó) el servicio, para que borre su copia

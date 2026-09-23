@@ -2,7 +2,7 @@ import { jsPDF } from 'jspdf'
 import { getSignedUrl } from './storage'
 import { CHECKLIST_STEPS, OTROS_DATOS_GROUPS, accesoriosLabel } from '../wizard/fieldsConfig'
 import { FOTOS_FIJAS_CATALOG } from '../wizard/fotosFijasCatalog'
-import { TIPO_SERVICIO_LABEL, TIPO_SERVICIO_TITULO, formatFecha } from './estado'
+import { TIPO_SERVICIO_LABEL, TIPO_SERVICIO_TITULO, TIPO_PAQUETE_LABEL, formatFecha } from './estado'
 
 const PAGE_W = 210
 const PAGE_H = 297
@@ -112,7 +112,7 @@ class Reporte {
 
     doc.setFontSize(8)
     doc.setTextColor(...MUTED)
-    doc.text('229 286 1072  ·  gps@solusof.com  ·  www.solusofgps.com', PAGE_W - MARGIN, 12, { align: 'right' })
+    doc.text('800 SOLUSOF (765-8763)  ·  gps@solusof.com  ·  www.solusof.com', PAGE_W - MARGIN, 12, { align: 'right' })
 
     doc.setDrawColor(...NAVY)
     doc.setLineWidth(0.9)
@@ -245,7 +245,10 @@ class Reporte {
 
 function datosGeneralesTexto(servicio) {
   const tipoLabel = TIPO_SERVICIO_LABEL[servicio.tipo_servicio] ?? 'servicio'
-  const fecha = formatFecha(servicio.created_at)
+  // Fecha programada (la que el admin fija al crear el servicio), no la de
+  // alta en el sistema -- created_at solo queda como respaldo para
+  // servicios viejos de antes de que existiera fecha_programada.
+  const fecha = formatFecha(servicio.fecha_programada || servicio.created_at)
   const unidad = servicio.unidad_razon_social || servicio.placas || 'la unidad'
   return (
     `Por medio del presente documento, GPS Solusof hace constar que se realizó un servicio de ` +
@@ -275,11 +278,27 @@ async function dibujarPortada(r, servicio) {
 
   r.parrafo(datosGeneralesTexto(servicio), { marginBottom: 7 })
 
+  const tipoPaqueteLabel =
+    servicio.tipo_paquete === 'otro' ? servicio.tipo_paquete_otro : TIPO_PAQUETE_LABEL[servicio.tipo_paquete]
+  const causa =
+    servicio.tipo_servicio === 'revision' || servicio.tipo_servicio === 'reinstalacion'
+      ? servicio.causa_rev
+      : servicio.tipo_servicio === 'desinstalacion'
+        ? servicio.causa_des
+        : null
+
+  r.sectionTitle('Datos del servicio')
+  r.filasDatos([
+    ['Servicio', TIPO_SERVICIO_LABEL[servicio.tipo_servicio]],
+    ['Tipo', tipoPaqueteLabel],
+    ...(causa ? [['Causa', causa]] : []),
+  ])
+
   r.sectionTitle('Datos del cliente')
   r.filasDatos([
     ['Cliente', servicio.cliente_nombre],
     ['Teléfono', servicio.cliente_telefono],
-    ['Correo', servicio.cliente_correo],
+    ['Correo', (servicio.cliente_correos ?? []).filter(Boolean).join(', ')],
     ['Dirección', servicio.cliente_direccion],
   ])
 
@@ -547,7 +566,7 @@ export async function generarReportePDF(servicio) {
 }
 
 export function nombreArchivoReporte(servicio) {
-  const base = [servicio.numero_servicio, servicio.placas || servicio.unidad_razon_social, servicio.cliente_nombre]
+  const base = [servicio.placas || servicio.unidad_razon_social, servicio.cliente_nombre]
     .filter(Boolean)
     .join(' - ')
   return `Servicio ${base}.pdf`.replace(/[/\\?%*:|"<>]/g, '-')

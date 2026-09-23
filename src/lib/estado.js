@@ -8,6 +8,17 @@ export const STATUS_LABEL = {
 
 export const STATUS_LIST = ['asignado', 'en_progreso', 'finalizado', 'aprobado', 'rechazado']
 
+// Mismos values que el <select> "Coordinó" de Servicios.html/Agendar.html en
+// OS (sin acentos en el value, aunque el label sí los lleve) -- así el
+// campo se manda tal cual y coincide directo, sin necesitar mapeo de nombres.
+export const COORDINO_LABEL = {
+  Hector: 'Héctor',
+  Victor: 'Víctor',
+  Soporte: 'Soporte',
+  Raul: 'Raul',
+}
+export const COORDINO_OPCIONES = Object.entries(COORDINO_LABEL).map(([value, label]) => ({ value, label }))
+
 export const TIPO_SERVICIO_LABEL = {
   instalacion: 'Instalación',
   revision: 'Revisión',
@@ -31,6 +42,13 @@ export const CAUSAS_REV = [
   'Falla accesorio',
   'Bloqueo movimiento',
   'Re activación',
+  'Unidad No Enciende',
+  'Sin Voltage',
+  'No Comunica',
+  'Sin Video',
+  'Error Sensores Combustible',
+  'Rescate',
+  'No detecta Puerta',
 ]
 
 // Solo aplica cuando el servicio es de tipo "desinstalacion" -- mismas
@@ -51,7 +69,7 @@ export const TIPO_PAQUETE_LABEL = {
   teltonika_basico: 'TELTONIKA BASICO',
   basico_gv310_audio_combustible: 'BASICO GV310 CON AIDIO Y SENSOR DE COMBUSTIBLE',
   dvr_truper: 'DVR TRUPER',
-  protocolo_sin_rfid: 'PROTOCOLO SIN RFID',
+  protocolo_sin_rfid: 'PROTOCOLO',
   dash_cam: 'DASH CAM',
   basico_audio_gv310: 'BASICO CON AUDIO GV310',
   protocolo_con_rfid: 'PROTOCOLO CON RFID',

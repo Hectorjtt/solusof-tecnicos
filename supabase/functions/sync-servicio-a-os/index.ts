@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
     // que mande el cliente, para que el mapeo salga siempre de la fuente real.
     const { data: servicio, error: servicioErr } = await admin
       .from('servicios')
-      .select('numero_servicio, tipo_servicio, cliente_nombre, imei_gps, imei_gps_desinstalacion, unidad_razon_social, tecnico_id, tipo_paquete, tipo_paquete_otro, gps_tipo, causa_rev, causa_des')
+      .select('numero_servicio, tipo_servicio, cliente_nombre, imei_gps, imei_gps_desinstalacion, unidad_razon_social, tecnico_id, tipo_paquete, tipo_paquete_otro, gps_tipo, causa_rev, causa_des, coordino')
       .eq('id', servicioId)
       .single()
 
@@ -107,6 +107,7 @@ Deno.serve(async (req) => {
         gpsTipo: servicio.gps_tipo,
         causaRev: servicio.causa_rev,
         causaDes: servicio.causa_des,
+        coordino: servicio.coordino,
         accesoriosInstalados: accesorios,
       }),
     })

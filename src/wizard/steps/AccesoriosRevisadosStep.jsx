@@ -55,7 +55,12 @@ export function AccesoriosRevisadosStep() {
             type="text"
             placeholder="Especifica el accesorio"
             value={row.etiqueta ?? ''}
-            onChange={(e) => setAccesorioRevisadoEtiqueta(row.accesorio_key, e.target.value)}
+            onChange={(e) => {
+              const texto = e.target.value
+              setAccesorioRevisadoEtiqueta(row.accesorio_key, texto)
+              const debeEstarMarcado = texto.trim() !== ''
+              if (debeEstarMarcado !== !!row.checked) toggleAccesorioRevisado(row.accesorio_key, debeEstarMarcado)
+            }}
           />
         </div>
       ))}

@@ -120,7 +120,6 @@ export const OTROS_DATOS_GROUPS = [
     fields: [
       { key: 'voltaje_bateria_inicial', label: 'Voltaje de batería inicial', type: 'number', suffix: 'V' },
       { key: 'voltaje_bateria_final', label: 'Voltaje de batería final', type: 'number', suffix: 'V' },
-      { key: 'tiempo_instalacion', label: 'Tiempo de instalación', type: 'text' },
     ],
   },
   {

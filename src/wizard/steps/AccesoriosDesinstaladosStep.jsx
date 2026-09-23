@@ -56,7 +56,12 @@ export function AccesoriosDesinstaladosStep() {
             type="text"
             placeholder="Especifica el accesorio"
             value={row.etiqueta ?? ''}
-            onChange={(e) => setAccesorioDesinstaladoEtiqueta(row.accesorio_key, e.target.value)}
+            onChange={(e) => {
+              const texto = e.target.value
+              setAccesorioDesinstaladoEtiqueta(row.accesorio_key, texto)
+              const debeEstarMarcado = texto.trim() !== ''
+              if (debeEstarMarcado !== !!row.checked) toggleAccesorioDesinstalado(row.accesorio_key, debeEstarMarcado)
+            }}
           />
         </div>
       ))}

@@ -4,7 +4,7 @@ import { Topbar } from '../../components/Topbar'
 import { ServicioResumen } from '../../components/ServicioResumen'
 import { useAuth } from '../../auth/AuthContext'
 import { ServicioWizardProvider, useServicioWizard } from '../../wizard/ServicioWizardContext'
-import { aprobarServicio, rechazarServicio, guardarReportePdfPath, sincronizarAprobacionConOS } from '../../lib/servicios'
+import { aprobarServicio, rechazarServicio, guardarReportePdfPath, sincronizarAprobacionConOS, enviarReportePorCorreo } from '../../lib/servicios'
 import { subirArchivo, reportePdfPath, getSignedUrl } from '../../lib/storage'
 import { STATUS_LABEL } from '../../lib/estado'
 
@@ -54,6 +54,8 @@ function AdminServicioDetalleInner() {
   const [motivo, setMotivo] = useState('')
   const [procesando, setProcesando] = useState(false)
   const [generandoPdf, setGenerandoPdf] = useState(false)
+  const [enviandoCorreo, setEnviandoCorreo] = useState(false)
+  const [avisoCorreo, setAvisoCorreo] = useState('')
   const [error, setError] = useState('')
 
   async function generarYSubirPdf(servicioCompleto) {
@@ -80,6 +82,14 @@ function AdminServicioDetalleInner() {
         const { blob, nombre } = await generarYSubirPdf(actualizado)
         descargarBlob(blob, nombre)
         await reload()
+        try {
+          const resultado = await enviarReportePorCorreo(id)
+          if (!resultado?.enviado) {
+            setError(resultado?.razon ?? 'No se pudo mandar el reporte por correo.')
+          }
+        } catch (mailErr) {
+          setError('El servicio se aprobó y el PDF se generó, pero no se pudo mandar por correo: ' + (mailErr.message ?? mailErr))
+        }
       } catch (pdfErr) {
         setError('El servicio se aprobó, pero no se pudo generar el PDF: ' + (pdfErr.message ?? pdfErr))
       } finally {
@@ -112,6 +122,24 @@ function AdminServicioDetalleInner() {
       setError('No se pudo generar el PDF: ' + (e.message ?? e))
     } finally {
       setGenerandoPdf(false)
+    }
+  }
+
+  async function enviarCorreoManual() {
+    setError('')
+    setAvisoCorreo('')
+    setEnviandoCorreo(true)
+    try {
+      const resultado = await enviarReportePorCorreo(id)
+      if (resultado?.enviado) {
+        setAvisoCorreo('Reporte enviado por correo.')
+      } else {
+        setError(resultado?.razon ?? 'No se pudo mandar el reporte por correo.')
+      }
+    } catch (e) {
+      setError('No se pudo mandar el reporte por correo: ' + (e.message ?? e))
+    } finally {
+      setEnviandoCorreo(false)
     }
   }
 
@@ -152,12 +180,10 @@ function AdminServicioDetalleInner() {
   // (aprobado o rechazado) -- is_admin() ya se salta esa restricción en RLS.
   const puedeRevisar = servicio.status === 'finalizado'
   const checklistEditable = true
-  // Datos del cliente/vehículo: editables mientras el servicio no esté ya
-  // "aprobado" (en progreso, finalizado o rechazado sí se pueden corregir) --
-  // salvo Hector Tamez / Raul Ornelas, que pueden seguir editando aunque ya
-  // esté aprobado.
-  const esEditorPrivilegiado = puedeEditarAprobados(profile?.nombre)
-  const datosEditable = servicio.status !== 'aprobado' || esEditorPrivilegiado
+  // Datos del cliente/vehículo: cualquier admin puede seguir corrigiéndolos
+  // aunque el servicio ya esté finalizado o aprobado (por ejemplo, para
+  // agregar un correo que se les olvidó capturar al técnico).
+  const datosEditable = true
 
   return (
     <div className="app-shell">
@@ -173,9 +199,20 @@ function AdminServicioDetalleInner() {
                 {generandoPdf ? 'Generando…' : 'Descargar PDF'}
               </button>
             )}
+            {servicio.status === 'aprobado' && (
+              <button type="button" className="btn" onClick={enviarCorreoManual} disabled={enviandoCorreo}>
+                {enviandoCorreo ? 'Enviando…' : 'Enviar correo'}
+              </button>
+            )}
             <span className={`badge badge-${servicio.status}`}>{STATUS_LABEL[servicio.status]}</span>
           </div>
         </div>
+
+        {avisoCorreo && (
+          <div className="panel" style={{ borderColor: 'var(--ok, #2e7d32)' }}>
+            <p className="text-sm" style={{ margin: 0, color: 'var(--ok, #2e7d32)' }}>{avisoCorreo}</p>
+          </div>
+        )}
 
         {servicio.status === 'rechazado' && servicio.motivo_rechazo && (
           <div className="panel">

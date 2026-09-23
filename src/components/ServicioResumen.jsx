@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useAuth } from '../auth/AuthContext'
 import { ChecklistField } from './ChecklistField'
 import { FotoSlot } from './FotoSlot'
+import { MultiEmailInput } from './MultiEmailInput'
 import { CHECKLIST_STEPS, OTROS_DATOS_GROUPS, accesoriosLabel } from '../wizard/fieldsConfig'
 import { getSignedUrl, getSignedDownloadUrl } from '../lib/storage'
 import { listTecnicos } from '../lib/servicios'
-import { TIPO_SERVICIO_LABEL, TIPO_PAQUETE_LABEL, TIPOS_PAQUETE, MODELOS_GPS, CAUSAS_REV, CAUSAS_DES } from '../lib/estado'
+import { TIPO_SERVICIO_LABEL, TIPO_PAQUETE_LABEL, TIPOS_PAQUETE, MODELOS_GPS, CAUSAS_REV, CAUSAS_DES, COORDINO_OPCIONES } from '../lib/estado'
 import { useServicioWizard } from '../wizard/ServicioWizardContext'
 import { GenericChecklistStep } from '../wizard/steps/GenericChecklistStep'
 import { AccesoriosStep } from '../wizard/steps/AccesoriosStep'
@@ -70,20 +72,39 @@ function DatoFechaHora({ label, value, editable, onChange }) {
   )
 }
 
-/** Igual que DatoCampo, pero como <select> con opciones fijas (ej. Modelo GPS). */
+/** Igual que DatoCampo, pero como <select> con opciones fijas (ej. Modelo GPS).
+ * `options` acepta strings simples (value === label, ej. MODELOS_GPS) o
+ * objetos { value, label } cuando difieren (ej. COORDINO_OPCIONES, donde el
+ * value va sin acentos para calzar exacto con lo que espera OS). */
 function DatoSelect({ label, value, options, editable, onChange }) {
-  if (!editable) return <DatoRow label={label} value={value} />
+  const normalizadas = options.map((o) => (typeof o === 'string' ? { value: o, label: o } : o))
+  if (!editable) {
+    const actual = normalizadas.find((o) => o.value === value)
+    return <DatoRow label={label} value={actual ? actual.label : value} />
+  }
   return (
     <div className="field">
       <label>{label}</label>
       <select value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
         <option value="">Selecciona…</option>
-        {options.map((opcion) => (
-          <option key={opcion} value={opcion}>
-            {opcion}
+        {normalizadas.map((opcion) => (
+          <option key={opcion.value} value={opcion.value}>
+            {opcion.label}
           </option>
         ))}
       </select>
+    </div>
+  )
+}
+
+/** Uno o varios correos del cliente. En modo lectura los junta con coma;
+ * en modo edición usa MultiEmailInput (con su propio botón de "+ agregar"). */
+function DatoCorreos({ label, value, editable, onChange }) {
+  if (!editable) return <DatoRow label={label} value={(value ?? []).filter(Boolean).join(', ')} />
+  return (
+    <div className="field">
+      <label>{label}</label>
+      <MultiEmailInput value={value ?? ['']} onChange={onChange} />
     </div>
   )
 }
@@ -341,6 +362,8 @@ function DatoTecnico({ tecnicoId, tecnicoNombre, tecnicos, editable, onChange })
  * `datosEditable` (solo admin, mientras el servicio no esté "aprobado")
  * permite corregir los datos del cliente y del vehículo/unidad. */
 export function ServicioResumen({ checklistEditable = false, fotosEditable = false, datosEditable = false }) {
+  const { profile } = useAuth()
+  const esTecnico = profile?.role === 'tecnico'
   const {
     servicio,
     childData,
@@ -428,7 +451,14 @@ export function ServicioResumen({ checklistEditable = false, fotosEditable = fal
         <h2>Datos del cliente</h2>
         <DatoCampo label="Cliente" value={servicio.cliente_nombre} editable={datosEditable} onChange={campoServicio('cliente_nombre')} />
         <DatoCampo label="Teléfono" value={servicio.cliente_telefono} editable={datosEditable} onChange={campoServicio('cliente_telefono')} />
-        <DatoCampo label="Correo electrónico" value={servicio.cliente_correo} editable={datosEditable} onChange={campoServicio('cliente_correo')} />
+        {!esTecnico && (
+          <DatoCorreos
+            label="Correo electrónico"
+            value={servicio.cliente_correos}
+            editable={datosEditable}
+            onChange={campoServicio('cliente_correos')}
+          />
+        )}
         <DatoCampo label="Dirección" value={servicio.cliente_direccion} editable={datosEditable} onChange={campoServicio('cliente_direccion')} />
       </div>
 
@@ -465,6 +495,13 @@ export function ServicioResumen({ checklistEditable = false, fotosEditable = fal
           tecnicos={tecnicosOpciones}
           editable={datosEditable}
           onChange={reasignarTecnico}
+        />
+        <DatoSelect
+          label="Coordinó"
+          value={servicio.coordino}
+          options={COORDINO_OPCIONES}
+          editable={datosEditable}
+          onChange={campoServicio('coordino')}
         />
         <DatoRow label="Inicio del servicio" value={formatFecha(servicio.iniciado_en)} />
         <DatoRow label="Fin del servicio" value={formatFecha(servicio.finalizado_en)} />

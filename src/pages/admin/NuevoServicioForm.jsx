@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Topbar } from '../../components/Topbar'
+import { AutocompleteInput } from '../../components/AutocompleteInput'
+import { MultiEmailInput } from '../../components/MultiEmailInput'
 import { useAuth } from '../../auth/AuthContext'
-import { crearServicio, listTecnicos, sincronizarServicioConOS } from '../../lib/servicios'
-import { MODELOS_GPS, TIPOS_PAQUETE, CAUSAS_REV, CAUSAS_DES } from '../../lib/estado'
+import { crearServicio, listTecnicos, sincronizarServicioConOS, buscarCorreosClientes } from '../../lib/servicios'
+import { listarClientesWialon } from '../../lib/wialon'
+import { MODELOS_GPS, TIPOS_PAQUETE, CAUSAS_REV, CAUSAS_DES, COORDINO_OPCIONES } from '../../lib/estado'
 
 const TIPOS_UNIDAD = [
   { value: 'particular', label: 'Particular' },
@@ -30,7 +33,7 @@ const initialForm = {
   causa_des: '',
   cliente_nombre: '',
   cliente_telefono: '',
-  cliente_correo: '',
+  cliente_correos: [''],
   cliente_direccion: '',
   unidad_razon_social: '',
   marca: '',
@@ -44,6 +47,7 @@ const initialForm = {
   imei_gps: '',
   imei_gps_desinstalacion: '',
   gps_tipo: '',
+  coordino: '',
   tecnico_id: '',
 }
 
@@ -52,6 +56,8 @@ export default function NuevoServicioForm() {
   const { profile } = useAuth()
   const [form, setForm] = useState(initialForm)
   const [tecnicos, setTecnicos] = useState([])
+  const [clientesWialon, setClientesWialon] = useState([])
+  const [correosClientes, setCorreosClientes] = useState(new Map())
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState('')
 
@@ -59,10 +65,28 @@ export default function NuevoServicioForm() {
     listTecnicos()
       .then(setTecnicos)
       .catch(() => setTecnicos([]))
+    listarClientesWialon().then(setClientesWialon)
+    buscarCorreosClientes()
+      .then(setCorreosClientes)
+      .catch(() => setCorreosClientes(new Map()))
   }, [])
 
   function set(key) {
     return (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
+  }
+
+  // Al escribir/elegir un cliente que ya se había registrado antes (con
+  // uno o varios correos capturados), autocompleta "Correo electrónico" con
+  // TODOS los que ya se le conocen -- solo si los campos siguen vacíos, para
+  // no pisar correos distintos que ya hayan puesto a mano.
+  function onChangeClienteNombre(valor) {
+    setForm((f) => {
+      const correosConocidos = correosClientes.get(valor.trim().toLowerCase())
+      const siguiente = { ...f, cliente_nombre: valor }
+      const camposVacios = f.cliente_correos.every((c) => !c.trim())
+      if (correosConocidos?.length && camposVacios) siguiente.cliente_correos = correosConocidos
+      return siguiente
+    })
   }
 
   async function handleSubmit(e) {
@@ -98,6 +122,7 @@ export default function NuevoServicioForm() {
         ...form,
         fecha_programada: new Date(form.fecha_programada).toISOString(),
         tipo_unidad: form.tipo_unidad || null,
+        cliente_correos: form.cliente_correos.map((c) => c.trim()).filter(Boolean),
         creado_por: profile.id,
       }
       const creado = await crearServicio(payload)
@@ -194,17 +219,25 @@ export default function NuevoServicioForm() {
           <h2>Datos del cliente</h2>
           <div className="field">
             <label htmlFor="cliente_nombre">Cliente</label>
-            <input id="cliente_nombre" type="text" required value={form.cliente_nombre} onChange={set('cliente_nombre')} />
+            <AutocompleteInput
+              id="cliente_nombre"
+              required
+              value={form.cliente_nombre}
+              onChange={onChangeClienteNombre}
+              options={clientesWialon}
+            />
           </div>
-          <div className="grid-2">
-            <div className="field">
-              <label htmlFor="cliente_telefono">Teléfono</label>
-              <input id="cliente_telefono" type="tel" value={form.cliente_telefono} onChange={set('cliente_telefono')} />
-            </div>
-            <div className="field">
-              <label htmlFor="cliente_correo">Correo electrónico</label>
-              <input id="cliente_correo" type="email" value={form.cliente_correo} onChange={set('cliente_correo')} />
-            </div>
+          <div className="field">
+            <label htmlFor="cliente_telefono">Teléfono</label>
+            <input id="cliente_telefono" type="tel" value={form.cliente_telefono} onChange={set('cliente_telefono')} />
+          </div>
+          <div className="field">
+            <label htmlFor="cliente_correo">Correo electrónico</label>
+            <MultiEmailInput
+              idPrefix="cliente_correo"
+              value={form.cliente_correos}
+              onChange={(v) => setForm((f) => ({ ...f, cliente_correos: v }))}
+            />
           </div>
           <div className="field">
             <label htmlFor="cliente_direccion">Dirección</label>
@@ -319,6 +352,17 @@ export default function NuevoServicioForm() {
                 No hay técnicos activos todavía — créalos en "Usuarios".
               </p>
             )}
+          </div>
+          <div className="field">
+            <label htmlFor="coordino">Coordinó</label>
+            <select id="coordino" value={form.coordino} onChange={set('coordino')}>
+              <option value="">Selecciona…</option>
+              {COORDINO_OPCIONES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 

@@ -50,7 +50,15 @@ export function AccesoriosStep() {
             type="text"
             placeholder="Especifica el accesorio"
             value={row.etiqueta ?? ''}
-            onChange={(e) => setAccesorioEtiqueta(row.accesorio_key, e.target.value)}
+            onChange={(e) => {
+              const texto = e.target.value
+              setAccesorioEtiqueta(row.accesorio_key, texto)
+              // Se marca/desmarca solo según si ya escribieron algo -- antes
+              // se les olvidaba tocar la casilla aunque ya hubieran puesto
+              // el nombre del accesorio.
+              const debeEstarMarcado = texto.trim() !== ''
+              if (debeEstarMarcado !== !!row.checked) toggleAccesorio(row.accesorio_key, debeEstarMarcado)
+            }}
           />
         </div>
       ))}

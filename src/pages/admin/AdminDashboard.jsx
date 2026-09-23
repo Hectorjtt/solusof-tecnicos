@@ -57,7 +57,7 @@ export default function AdminDashboard() {
     const q = busqueda.trim().toLowerCase()
     if (q) {
       list = list.filter((s) =>
-        [s.cliente_nombre, s.placas, s.marca, s.modelo, s.tecnico?.nombre]
+        [s.cliente_nombre, s.placas, s.imei_gps, s.marca, s.modelo, s.tecnico?.nombre]
           .filter(Boolean)
           .some((v) => v.toLowerCase().includes(q)),
       )
@@ -105,7 +105,7 @@ export default function AdminDashboard() {
         <div className="row-between" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
           <input
             type="text"
-            placeholder="Buscar por cliente, placas, técnico…"
+            placeholder="Buscar por cliente, placas, IMEI, técnico…"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             style={{ minHeight: 44, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 6, flex: '1 1 220px' }}
