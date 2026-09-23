@@ -130,6 +130,11 @@ function AdminServicioDetalleInner() {
     setAvisoCorreo('')
     setEnviandoCorreo(true)
     try {
+      // Regenera el PDF siempre antes de mandarlo -- si se editaron datos
+      // (cliente, checklist, etc.) después de aprobar, el correo debe llevar
+      // la versión actualizada y no la que se generó al momento de aprobar.
+      await generarYSubirPdf(servicio)
+      await reload()
       const resultado = await enviarReportePorCorreo(id)
       if (resultado?.enviado) {
         setAvisoCorreo('Reporte enviado por correo.')
