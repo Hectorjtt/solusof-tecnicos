@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
     }
 
     const tipoLabel = TIPO_SERVICIO_LABEL[servicio.tipo_servicio] ?? 'servicio'
-    const unidad = servicio.placas || servicio.unidad_razon_social || 'su unidad'
+    const unidad = servicio.unidad_razon_social || servicio.placas || 'su unidad'
     const fechaServicio = servicio.fecha_programada
       ? new Date(servicio.fecha_programada).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
       : null
