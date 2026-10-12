@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Topbar } from '../../components/Topbar'
 import { ServicioResumen } from '../../components/ServicioResumen'
+import { FirmaStep } from '../../wizard/steps/FirmaStep'
 import { useAuth } from '../../auth/AuthContext'
 import { ServicioWizardProvider, useServicioWizard } from '../../wizard/ServicioWizardContext'
 import { aprobarServicio, rechazarServicio, guardarReportePdfPath, sincronizarAprobacionConOS, enviarReportePorCorreo } from '../../lib/servicios'
@@ -185,6 +186,9 @@ function AdminServicioDetalleInner() {
   // (aprobado o rechazado) -- is_admin() ya se salta esa restricción en RLS.
   const puedeRevisar = servicio.status === 'finalizado'
   const checklistEditable = true
+  // Soporte puede cerrar un servicio que el técnico aún no finaliza, sin tener
+  // que entrar a la cuenta del técnico para capturar las firmas.
+  const puedeFinalizarDesdeAdmin = ['asignado', 'en_progreso'].includes(servicio.status)
   // Datos del cliente/vehículo: cualquier admin puede seguir corrigiéndolos
   // aunque el servicio ya esté finalizado o aprobado (por ejemplo, para
   // agregar un correo que se les olvidó capturar al técnico).
@@ -241,6 +245,20 @@ function AdminServicioDetalleInner() {
         )}
 
         <ServicioResumen checklistEditable={checklistEditable} datosEditable={datosEditable} fotosEditable={datosEditable} />
+
+        {puedeFinalizarDesdeAdmin && (
+          <>
+            <div className="panel">
+              <h2>Finalizar servicio</h2>
+              <p className="text-sm muted" style={{ margin: 0 }}>
+                Si el técnico no puede cerrar el servicio desde su cuenta, puedes
+                finalizarlo aquí: completa el checklist y las fotos de arriba, y
+                captura las firmas de abajo. Queda firmado a tu nombre como técnico.
+              </p>
+            </div>
+            <FirmaStep servicioId={id} />
+          </>
+        )}
 
         {puedeRevisar && (
           <div className="panel">
