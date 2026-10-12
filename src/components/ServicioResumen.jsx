@@ -418,7 +418,17 @@ export function ServicioResumen({ checklistEditable = false, fotosEditable = fal
             editable={datosEditable}
             onChange={campoServicio('fecha_programada')}
           />
-          <DatoRow label="Servicio" value={TIPO_SERVICIO_LABEL[servicio.tipo_servicio]} />
+          {/* "solar" tiene un checklist/fotos distintos, así que no se mezcla
+              con los demás tipos: ni se puede cambiar a solar ni desde solar. */}
+          <DatoSelect
+            label="Servicio"
+            value={servicio.tipo_servicio}
+            options={Object.entries(TIPO_SERVICIO_LABEL)
+              .filter(([value]) => value !== 'solar' || servicio.tipo_servicio === 'solar')
+              .map(([value, label]) => ({ value, label }))}
+            editable={datosEditable && servicio.tipo_servicio !== 'solar'}
+            onChange={campoServicio('tipo_servicio')}
+          />
           <DatoTipoPaquete
             tipoPaquete={servicio.tipo_paquete}
             tipoPaqueteOtro={servicio.tipo_paquete_otro}
@@ -480,6 +490,7 @@ export function ServicioResumen({ checklistEditable = false, fotosEditable = fal
           onChangeOtra={campoServicio('tipo_unidad_otra')}
         />
         <DatoCampo label="IMEI del GPS" value={servicio.imei_gps} editable={datosEditable} onChange={campoServicio('imei_gps')} />
+        <DatoCampo label="SIM del GPS" value={servicio.sim_gps} editable={datosEditable} onChange={campoServicio('sim_gps')} />
         {servicio.tipo_servicio === 'desinstalacion_instalacion' && (
           <DatoCampo
             label="IMEI a desinstalar"

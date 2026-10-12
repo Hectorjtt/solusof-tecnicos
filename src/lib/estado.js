@@ -25,6 +25,7 @@ export const TIPO_SERVICIO_LABEL = {
   reinstalacion: 'Reinstalación',
   desinstalacion: 'Desinstalación',
   desinstalacion_instalacion: 'Desinstalación e Instalación',
+  solar: 'Solar',
 }
 
 export const TIPO_SERVICIO_TITULO = {
@@ -33,6 +34,7 @@ export const TIPO_SERVICIO_TITULO = {
   reinstalacion: 'Reporte de reinstalación',
   desinstalacion: 'Reporte de desinstalación',
   desinstalacion_instalacion: 'Reporte de desinstalación e instalación',
+  solar: 'Reporte de instalación solar',
 }
 
 // Aplica a "revision" Y "reinstalacion" (en OS/Servicios.html ambos
@@ -84,6 +86,10 @@ export const MODELOS_GPS = [
   'JM-LL303',
   'JT808',
   'Meitrack T333',
+  'Meitrack T366',
+  'Meitrack T633L',
+  'MVT380',
+  'MVT800',
   'Queclink CV100LG',
   'Queclink CV200XEU/XNA',
   'Queclink GL320MG',

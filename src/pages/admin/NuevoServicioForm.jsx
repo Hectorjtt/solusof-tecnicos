@@ -22,6 +22,7 @@ const TIPOS_SERVICIO = [
   { value: 'reinstalacion', label: 'Reinstalación' },
   { value: 'desinstalacion', label: 'Desinstalación' },
   { value: 'desinstalacion_instalacion', label: 'Desinstalación e Instalación' },
+  { value: 'solar', label: 'Solar' },
 ]
 
 const initialForm = {
@@ -45,6 +46,7 @@ const initialForm = {
   tipo_unidad: '',
   tipo_unidad_otra: '',
   imei_gps: '',
+  sim_gps: '',
   imei_gps_desinstalacion: '',
   gps_tipo: '',
   coordino: '',
@@ -108,7 +110,7 @@ export default function NuevoServicioForm() {
       setError('Selecciona el tipo de servicio.')
       return
     }
-    if (!form.tipo_paquete) {
+    if (form.tipo_servicio !== 'solar' && !form.tipo_paquete) {
       setError('Selecciona el tipo (Básico, PT, MDVR, etc.).')
       return
     }
@@ -165,26 +167,28 @@ export default function NuevoServicioForm() {
             ))}
           </div>
 
-          <div className="field" style={{ marginTop: 12 }}>
-            <label htmlFor="tipo_paquete">Tipo</label>
-            <select id="tipo_paquete" value={form.tipo_paquete} onChange={set('tipo_paquete')}>
-              <option value="">Selecciona…</option>
-              {TIPOS_PAQUETE.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-            {form.tipo_paquete === 'otro' && (
-              <input
-                type="text"
-                placeholder="Especifica"
-                style={{ marginTop: 8 }}
-                value={form.tipo_paquete_otro}
-                onChange={set('tipo_paquete_otro')}
-              />
-            )}
-          </div>
+          {form.tipo_servicio !== 'solar' && (
+            <div className="field" style={{ marginTop: 12 }}>
+              <label htmlFor="tipo_paquete">Tipo</label>
+              <select id="tipo_paquete" value={form.tipo_paquete} onChange={set('tipo_paquete')}>
+                <option value="">Selecciona…</option>
+                {TIPOS_PAQUETE.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+              {form.tipo_paquete === 'otro' && (
+                <input
+                  type="text"
+                  placeholder="Especifica"
+                  style={{ marginTop: 8 }}
+                  value={form.tipo_paquete_otro}
+                  onChange={set('tipo_paquete_otro')}
+                />
+              )}
+            </div>
+          )}
 
           {(form.tipo_servicio === 'revision' || form.tipo_servicio === 'reinstalacion') && (
             <div className="field">
@@ -325,6 +329,10 @@ export default function NuevoServicioForm() {
                 ))}
               </select>
             </div>
+          </div>
+          <div className="field">
+            <label htmlFor="sim_gps">SIM del GPS</label>
+            <input id="sim_gps" type="text" value={form.sim_gps} onChange={set('sim_gps')} />
           </div>
           {form.tipo_servicio === 'desinstalacion_instalacion' && (
             <div className="field">

@@ -26,7 +26,7 @@ export function AccesoriosDesinstaladosStep() {
     <div className="panel">
       <p className="text-sm muted" style={{ marginTop: 0 }}>
         Marca los accesorios que se retiran de la unidad en este servicio.
-        Esto no pide fotos — las fotos solo aplican a lo que instales hoy.
+        Por cada uno que marques se te va a pedir su foto en el paso de Evidencias.
       </p>
       {fijos.map((item) => {
         const row = rowFor(item.key)

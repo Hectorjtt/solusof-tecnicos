@@ -195,6 +195,17 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
         }
         return [{ slotKey: `accesorio:${a.accesorio_key}`, etiqueta: a.etiqueta }]
       })
+      // En "desinstalacion_instalacion" también se pide foto de cada accesorio
+      // desinstalado que se marque (slot_key = "desinstalado:<key>").
+      if (servicio?.tipo_servicio === 'desinstalacion_instalacion') {
+        for (const a of accesoriosDesinstalados) {
+          if (!a.checked || !a.etiqueta || a.etiqueta.trim() === '') continue
+          wantedSlots.push({
+            slotKey: `desinstalado:${a.accesorio_key}`,
+            etiqueta: `Desinstalado: ${a.etiqueta}`,
+          })
+        }
+      }
       const wantedKeys = new Set(wantedSlots.map((s) => s.slotKey))
 
       ;(async () => {
@@ -233,7 +244,7 @@ export function ServicioWizardProvider({ servicioId, children, poll = false }) {
     // Se reacciona solo a cambios de "accesorios" a propósito: es el disparador
     // de la sincronía; "fotos" se lee de fotosRef (siempre al día) en cada corrida.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accesorios, loading, servicioId])
+  }, [accesorios, accesoriosDesinstalados, servicio?.tipo_servicio, loading, servicioId])
 
   // Estable entre renders (useCallback) para que los campos memoizados (React.memo)
   // no se re-rendericen solo porque el padre volvió a renderizar -- esto es lo que

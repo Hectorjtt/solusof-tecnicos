@@ -82,6 +82,7 @@ Deno.serve(async (req) => {
       reinstalacion: 'Reinstalación',
       desinstalacion: 'Desinstalación',
       desinstalacion_instalacion: 'Desinstalación e Instalación',
+      solar: 'Solar',
     }
     const TIPO_PAQUETE_LABEL: Record<string, string> = {
       basico_termometro: 'BASICO CON TERMOMETRO',

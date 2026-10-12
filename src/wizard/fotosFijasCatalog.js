@@ -17,9 +17,21 @@ export const FOTOS_FIJAS_CATALOG = [
 
 const PAQUETES_PROTOCOLO = ['protocolo_sin_rfid', 'protocolo_con_rfid']
 
+// Para "solar" el resto del checklist (recepción, instalación, pruebas,
+// entrega, otros datos, accesorios) se queda igual que cualquier otro tipo
+// de servicio -- solo las fotos obligatorias del paso de evidencias cambian
+// a estas 3, en vez del catálogo normal (placas, VIN, antenas, etc.).
+export const FOTOS_SOLAR_CATALOG = [
+  { key: 'imei_gps', label: 'Fotografía del IMEI del GPS' },
+  { key: 'caja_solar', label: 'Fotografía de la caja' },
+  { key: 'equipo_asegurado', label: 'Fotografía del equipo asegurado' },
+]
+
 /** Fotos fijas que aplican para un servicio dado -- todas las de siempre, más
- * "buzzer" cuando el paquete contratado es alguna variante de "Protocolo". */
+ * "buzzer" cuando el paquete contratado es alguna variante de "Protocolo",
+ * o el catálogo reducido de "solar" cuando el tipo de servicio es ese. */
 export function fotosFijasParaServicio(servicio) {
+  if (servicio?.tipo_servicio === 'solar') return FOTOS_SOLAR_CATALOG
   const esProtocolo = PAQUETES_PROTOCOLO.includes(servicio?.tipo_paquete)
   return FOTOS_FIJAS_CATALOG.filter((f) => !f.soloProtocolo || esProtocolo)
 }

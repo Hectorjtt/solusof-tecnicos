@@ -313,6 +313,7 @@ async function dibujarPortada(r, servicio) {
     ['VIN / Serie', servicio.vin_serie],
     ['Tipo de unidad', tipoUnidad],
     ['IMEI del GPS', servicio.imei_gps],
+    ['SIM del GPS', servicio.sim_gps],
     ...(servicio.tipo_servicio === 'desinstalacion_instalacion'
       ? [['IMEI a desinstalar', servicio.imei_gps_desinstalacion]]
       : []),

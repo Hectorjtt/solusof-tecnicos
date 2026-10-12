@@ -10,6 +10,11 @@ function ordenSlots(fotos) {
   return [...fotos].sort((a, b) => {
     const rank = (f) => {
       if (f.slot_tipo === 'fija') return ordenFijo.indexOf(f.slot_key)
+      // Fotos de accesorios desinstalados: van después de las de instalados.
+      if (f.slot_key.startsWith('desinstalado:')) {
+        const i = ACCESORIOS_CATALOG.findIndex((a) => `desinstalado:${a.key}` === f.slot_key)
+        return 2000 + (i === -1 ? 999 : i)
+      }
       // Los slots de "subfotos" (ej. accesorio:sensor_puerta:piloto) llevan el
       // prefijo del accesorio -- se agrupan con él aunque el key exacto no matchee.
       const idx = ordenAccesorio.findIndex((k) => f.slot_key === k || f.slot_key.startsWith(`${k}:`))
